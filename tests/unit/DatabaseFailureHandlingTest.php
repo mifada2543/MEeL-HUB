@@ -25,10 +25,24 @@ class DatabaseFailureHandlingTest extends TestCase
         $this->assertStringContainsString('error_log(', $src);
         $this->assertStringContainsString('Koneksi ke database gagal', $src);
     }
+    /**
+     * @see docs/{id,en}/modules.md — bagian "Authentication Flow" dan dokumentasi
+     *       konfigurasi auth/settings.php (salinan template ada di
+     *       auth/settings.example.php)
+     */
     public function testDatabaseFailureDoesNotLeakWarningToCliOutput(): void
     {
         if (!is_file(MEEL_ROOT . '/auth/settings.php')) {
-            $this->markTestSkipped('auth/settings.php tidak ada (lingkungan tanpa konfigurasi lokal)');
+            $this->markTestSkipped(
+                'testDatabaseFailureDoesNotLeakWarningToCliOutput dilewatkan karena '
+                . 'auth/settings.php tidak ada. Test ini butuh berkas konfigurasi '
+                . 'lokal (lihat auth/settings.example.php sebagai template). '
+                . 'Di CI atau lingkungan tanpa konfigurasi lokal, test ini '
+                . 'di-skip secara eksplisit. Untuk menjadikannya berjalan, '
+                . 'siapkan auth/settings.php sesuai template atau sesuaikan '
+                . 'CI agar menyediakan berkas tersebut sebelum phpunit dijalankan. '
+                . 'Lihat @see di atas dan docs/{id,en}/modules.md.'
+            );
         }
         $code = 'require ' . var_export(MEEL_ROOT . '/auth/config.php', true) . '; echo "SHOULD_NOT_PRINT";';
         $output = [];

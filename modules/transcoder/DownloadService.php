@@ -815,7 +815,7 @@ class DownloadService extends TranscoderBase
      * @param int $timeoutSeconds batas waktu total semua proses
      * @param int $fileDur durasi media, untuk meng-hitung persen progres
      * @return array<string, array{started: bool, pid: int, exit: int|null}>
-     * @see docs/{id,en}/modules.md
+     * @see docs/{id,en}/modules.md — bagian "Video finalization in DownloadService"
      */
     private function runParallelFfmpeg(array $jobs, int $timeoutSeconds, int $fileDur): array
     {
