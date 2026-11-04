@@ -801,6 +801,9 @@ class DownloadService extends TranscoderBase
         }
     }
     /**
+     * Jalankan beberapa proses ffmpeg sekaligus lalu awasi sampai semuanya
+     * selesai.
+     *
      * @param array<string, array{
      *     cmd: array<int, string>,      // argumen untuk proc_open
      *     env: array<string, string>,   // environment untuk proc_open
@@ -816,6 +819,16 @@ class DownloadService extends TranscoderBase
      * @param int $fileDur durasi media, untuk meng-hitung persen progres
      * @return array<string, array{started: bool, pid: int, exit: int|null}>
      * @see docs/{id,en}/modules.md — bagian "Video finalization in DownloadService"
+     *
+     * Dipisah dari finalizeVideo() saat metode itu mencapai 268 baris dengan
+     * sembilan fase (T19). Bentuknya sengaja tetap metode, bukan kelas baru
+     * (mis. FfmpegProcess): semua hook yang dibutuhkan ber-protected di
+     * TranscoderBase, dan daftar anak proses adalah state per-instance yang
+     * dipindai terminateAllProcesses() saat shutdown. Kelas terpisah tidak
+     * bisa menjangkau state itu tanpa melebarkan method-method tersebut jadi
+     * public atau memindahkan daftar anak ke collaborator bersama — dan kedua
+     * pilihan itu tepat jatuh di mekanisme yang tugasnya mencegah proses
+     * ffmpeg yatim ketika request mati di tengah transcode.
      */
     private function runParallelFfmpeg(array $jobs, int $timeoutSeconds, int $fileDur): array
     {
