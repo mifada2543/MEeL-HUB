@@ -180,7 +180,6 @@
       });
     };
   }
-
   registerModel({
     id: "anime4k",
     label: "Anime4K",
@@ -225,7 +224,6 @@
       ];
     },
   });
-
   registerModel({
     id: "meelscale",
     label: "MEeLScale",
@@ -250,7 +248,6 @@
     ],
     load: modelFileLoader("meelsharp", "meelsharp/model.js"),
   });
-
   function loadModel(model) {
     if (!model.load) {
       model._loaded = true;
@@ -280,12 +277,19 @@
       );
     return model._loading;
   }
-
   var plyr = null;
   var attachedPlayer = null;
-
   function getVideo() {
     return document.getElementById("main-video");
+  }
+  function isMiniPlayerActive() {
+    var s = document.getElementById("mini-player-shell");
+    if (!s) return false;
+    try {
+      return window.getComputedStyle(s).display !== "none";
+    } catch (e) {
+      return s.style.display !== "none";
+    }
   }
   function getContainer() {
     if (
@@ -954,7 +958,7 @@
   }
 
   function scheduleFrame() {
-    if (!state.enabled || !engine.built || loop.pending || document.hidden)
+    if (!state.enabled || !engine.built || loop.pending || document.hidden || isMiniPlayerActive())
       return;
     var v = getVideo();
     if (!v) return;
@@ -2034,7 +2038,7 @@ function turnOff() {
     if (!state.enabled) return;
     if (document.hidden) {
       stopLoop();
-    } else if (engine.built) {
+    } else if (engine.built && !isMiniPlayerActive()) {
       loop.dirty = true;
       renderFrame(true);
       scheduleFrame();
@@ -2042,7 +2046,7 @@ function turnOff() {
   });
 
   setInterval(function () {
-    if (!state.enabled || !engine.built || document.hidden) return;
+    if (!state.enabled || !engine.built || document.hidden || isMiniPlayerActive()) return;
     var v = getVideo();
     if (!v || v.paused || !v.videoWidth) return;
     if (loop.raf) return;

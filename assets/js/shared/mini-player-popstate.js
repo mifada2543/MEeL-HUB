@@ -12,8 +12,12 @@ window.meelMiniPlayerPopstate = function (options) {
       return "";
     };
   const onExit = opts.onExit || function () {};
+  let lastExit = 0;
   window.addEventListener("popstate", (e) => {
     if (!isActive()) return;
+    const now = Date.now();
+    if (now - lastExit < 500) return;
+    lastExit = now;
     const backToMiniEntry = !!(e.state && e.state.miniPlayer);
     if (backToMiniEntry || window.location.href === getWatchUrl()) {
       onExit();

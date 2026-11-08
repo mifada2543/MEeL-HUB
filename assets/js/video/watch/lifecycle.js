@@ -1,7 +1,18 @@
 (window.addEventListener("pageshow", (e) => {
-  if (e.persisted) {
-    window.location.reload();
+  if (!e.persisted) return;
+  const miniShell = document.getElementById("mini-player-shell");
+  if (miniShell && miniShell.style.display !== "none") {
+    lastTimeUpdateTimestamp = Date.now();
+    try {
+      player && (lastPlayTime = player.currentTime);
+      if (player && player.paused && !player.ended) {
+        const p = player.play();
+        p && p.catch && p.catch(function () {});
+      }
+    } catch (err) {}
+    return;
   }
+  window.location.reload();
 }),
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
@@ -12,7 +23,10 @@
       const e = player?.elements?.container;
       if (e && e._fsGlowPause) e._fsGlowPause();
     } else {
+      const miniShell = document.getElementById("mini-player-shell");
+      const miniActive = !!(miniShell && miniShell.style.display !== "none");
       if (
+        !miniActive &&
         glowEnabled &&
         videoElement &&
         !videoElement.paused &&

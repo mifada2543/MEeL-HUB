@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[🇬🇧 English](README-en.md)
+**🇮🇩 Indonesia** · [🇬🇧 English](README-en.md)
 
 </div>
 
@@ -11,16 +11,21 @@
   <br><br>
   <strong>Platform media pribadi — self-hosted, open source, tanpa biaya langganan.</strong>
   <br>
-  <sub>Video streaming, musik, e-book, dan file storage — semuanya dari server Anda sendiri. <a href="docs/id/arcade-optional.md">Arcade</a> tersedia sebagai ekstensi terpisah.</sub>
+  <sub>Video streaming, musik, e-book, dan penyimpanan file — semuanya dari server Anda sendiri. <a href="docs/id/arcade-optional.md">Arcade</a> tersedia sebagai ekstensi terpisah.</sub>
   <br><br>
 
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
-[![FFmpeg](https://img.shields.io/badge/FFmpeg-n6.1.1%20(bundled)-007808?style=flat-square&logo=ffmpeg&logoColor=white)](tools/ffmpeg-lite)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-n6.1.1%20%28bundled%29-007808?style=flat-square&logo=ffmpeg&logoColor=white)](tools/ffmpeg-lite)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue?style=flat-square)](LICENSE)
 [![CI](https://github.com/mifada2543/MEeL-HUB/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/MEeL-HUB/actions/workflows/ci.yml)
 [![GitHub Stars](https://img.shields.io/github/stars/mifada2543/MEeL-HUB?style=social)](https://github.com/mifada2543/MEeL-HUB)
 
+</div>
+<div align="center">
+  <a href="https://github.com/mifada2543/MEeL-HUB">
+    <img src="assets/og-image.png" alt="MEeL-HUB — media hub pribadi berbasis PHP & MySQL untuk streaming video HLS, musik lossless, buku digital, dan cloud drive" width="100%"/>
+  </a>
 </div>
 
 <table>
@@ -42,6 +47,7 @@
 
 - [📸 Galeri Screenshot](#-galeri-screenshot)
 - [✨ Fitur](#-fitur)
+- [📋 Prasyarat](#-prasyarat)
 - [⚡ Quick Start](#-quick-start)
 - [🛠 Tech Stack](#-tech-stack)
 - [📁 Struktur Proyek](#-struktur-proyek)
@@ -49,16 +55,19 @@
 - [🧪 Testing](#-testing)
 - [👥 Role-Based Access Control](#-role-based-access-control)
 - [🤝 Contributing](#-contributing)
+- [🔐 Keamanan](#-keamanan)
 - [📄 License](#-license)
+- [⚠️ Disclaimer](#-disclaimer)
+- [📬 Kontak](#-kontak)
 
 ---
 
 ## 📸 Galeri Screenshot
 
-Seluruh halaman di bawah ini bisa dibuka **tanpa login** (mode tamu). Semua gambar diambil langsung dari instance MEeL yang sedang berjalan, jadi tampilan di README selalu cocok dengan kode yang aktif.
+Semua halaman di bawah ini dapat dibuka **tanpa login** (mode tamu). Gambar diambil langsung dari instance MEeL yang sedang berjalan, sehingga tampilan di README selalu sesuai dengan kode yang aktif.
 
 <details>
-<summary><strong>🖼️ Lihat 15 screenshot lainnya</strong></summary>
+<summary><strong>🖼️ Lihat 15 screenshot lainnya (18 total)</strong></summary>
 
 <h3 align="center">🎬 Video</h3>
 
@@ -144,6 +153,20 @@ Seluruh halaman di bawah ini bisa dibuka **tanpa login** (mode tamu). Semua gamb
 
 ---
 
+## 📋 Prasyarat
+
+| Komponen       | Minimum                                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **PHP**        | 8.2+ dengan ekstensi `mysqli`, `pdo_mysql`, `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, dan `curl`            |
+| **Database**   | MySQL 5.7+ / MariaDB 10.2+ dengan encoding `utf8mb4`                                                                 |
+| **Web server** | Apache 2.4+ dengan `mod_rewrite` dan `mod_headers`                                                                   |
+| **Media**      | `ffmpeg-lite` 6.1.1 (bundled di `tools/ffmpeg-lite`) · `yt-dlp` untuk pengunduhan dari URL                           |
+| **Sumber daya** | RAM 2 GB (4 GB+ untuk transcoding) · ruang penyimpanan 10 GB+                                                        |
+
+> `install.sh` memasang dan memverifikasi seluruh dependensi di atas secara otomatis.
+
+---
+
 ## ⚡ Quick Start
 
 ```bash
@@ -204,8 +227,6 @@ php tools/check_deploy.php
 | **Keamanan** | CSRF · Rate Limiting · MFA · Audit Log · RBAC |
 | **Lainnya**  | PWA · Service Worker · Class-Map Autoloader   |
 
-> Butuh: PHP 8.2+ dengan ekstensi `mysqli`, `pdo_mysql`, `gd`, `intl`, `zip`, `curl` · ffmpeg-lite 6.1.1 (bundled di `tools/ffmpeg-lite`) · Apache 2.4+ dengan `mod_rewrite`
-
 ---
 
 ## 📁 Struktur Proyek
@@ -227,7 +248,7 @@ MEeL/
 ├── tests/          # PHPUnit tests (source repo; tidak ikut ZIP utama)
 ├── tools/          # Toolchain + health check (tools/check_deploy.php)
 ├── video/          # Pemutar video
-└── install.sh      📄 # Installer satu komando
+└── install.sh      # Installer satu komando
 ```
 
 ---
@@ -249,20 +270,13 @@ MEeL/
 | Arcade                | [ID](docs/id/arcade-optional.md) | [EN](docs/en/arcade-optional.md) |
 | Download              |     [ID](docs/id/download.md)     |     [EN](docs/en/download.md)     |
 
+Riwayat perubahan: [CHANGELOG-core.md](CHANGELOG-core.md) · [CHANGELOG-arcade.md](CHANGELOG-arcade.md).
+
 ---
 
 ## 🧪 Testing
 
-> Jalankan `php vendor/bin/phpunit --list-tests` untuk jumlah test terkini. CI menjalankan unit, integration, functional, dan security suites.
->
-> Angka sengaja ditulis sebagai rentang kasar, bukan angka eksak: jumlah test naik terus seiring waktu, jadi angka eksak cepat basi. Kalau ingin mengukur sendiri:
->
-> ```bash
-> vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'    | tail -3
-> vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests'   | tail -3
-> php tests/functional_test.php                                          # ringkasan di logs/
-> php tests/security_test.php                                            # ringkasan di logs/
-> ```
+> Jumlah test terus bertambah. Jalankan perintah di bawah untuk angka terkini; CI menjalankan suite unit, integration, functional, dan security.
 
 ```bash
 composer install
@@ -288,7 +302,19 @@ php tools/check_deploy.php                                 # Deployment
 
 ## 🤝 Contributing
 
-Kontribusi dalam bentuk laporan bug, saran fitur, atau pull request sangat diterima. Lihat [template laporan bug](.github/ISSUE_TEMPLATE/bug_report.md).
+Kontribusi dalam bentuk laporan bug, saran fitur, atau pull request sangat diterima.
+
+1. Fork repo dan buat branch (`feat/nama-fitur` atau `fix/nama-bug`).
+2. Jalankan `composer install`, lalu suite test yang relevan.
+3. Buka pull request dengan deskripsi perubahan dan langkah verifikasinya.
+
+Lihat [template laporan bug](.github/ISSUE_TEMPLATE/bug_report.md).
+
+---
+
+## 🔐 Keamanan
+
+Jika menemukan celah keamanan, jangan membuka issue publik. Laporkan secara privat ke [mifada2543@gmail.com](mailto:mifada2543@gmail.com) agar dapat ditangani sebelum dipublikasikan.
 
 ---
 

@@ -1,18 +1,16 @@
 <?php
+/** @var \mysqli $conn */
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once __DIR__ . '/api/config.php';
 require_once __DIR__ . '/../../modules/core/base_url.php';
-
 $root = meel_base_url_path();
-
+$og_image_url = (function_exists('detectProtocol') ? detectProtocol() : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $root . '/assets/og-image.png';
 $song_id = $_GET['id'] ?? $_GET['song'] ?? 'starlight';
 $song_type = $_GET['type'] ?? 'builtin';
 $speed = (float) ($_GET['speed'] ?? 1.5);
-
 $song_data = null;
 $beatmap_data = null;
-
 if ($song_type === 'custom' && is_numeric($song_id)) {
     $stmt = $conn->prepare(
         "SELECT s.*, u.username
@@ -24,7 +22,6 @@ if ($song_type === 'custom' && is_numeric($song_id)) {
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-
     if ($row) {
         $conn->query("UPDATE arcade_song SET play_count = play_count + 1 WHERE id = " . (int)$song_id);
 
@@ -32,7 +29,6 @@ if ($song_type === 'custom' && is_numeric($song_id)) {
         if (!empty($row['beatmap_path']) && file_exists($beatmap_file)) {
             $beatmap_data = json_decode(file_get_contents($beatmap_file), true);
         }
-
         $song_data = [
             'id' => (int) $row['id'],
             'title' => $row['title'],
@@ -76,13 +72,11 @@ if ($song_type === 'custom' && is_numeric($song_id)) {
             }
         }
     }
-
     $beatmap_file = __DIR__ . '/songs/' . $song_id . '/beatmap.json';
     if (file_exists($beatmap_file)) {
         $beatmap_data = json_decode(file_get_contents($beatmap_file), true);
     }
 }
-
 if (!$song_data) {
     $song_data = [
         'id' => $song_id, 'title' => $song_id, 'artist' => 'Unknown',
@@ -95,7 +89,6 @@ if (!$song_data) {
 if (!$beatmap_data) {
     $beatmap_data = ['notes' => [], 'duration' => 0];
 }
-
 $song_json = json_encode($song_data, JSON_UNESCAPED_UNICODE);
 $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
 ?>
@@ -107,7 +100,10 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
   <meta name="robots" content="noindex, nofollow" />
   <meta name="description" content="MEeL!Mania — <?= htmlspecialchars($song_data['title']) ?>" />
   <meta property="og:title" content="MEeL!Mania — <?= htmlspecialchars($song_data['title']) ?>" />
-  <meta property="og:image" content="<?= $root ?>/assets/MEeL.png" />
+  <meta property="og:image" content="<?= htmlspecialchars($og_image_url, ENT_QUOTES, 'UTF-8') ?>" />
+  <meta property="og:image:alt" content="MEeL!Mania — <?= htmlspecialchars($song_data['title']) ?>" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <title>MEeL!Mania — <?= htmlspecialchars($song_data['title']) ?></title>
   <link rel="icon" type="image/png" href="<?= $root ?>/assets/MEeL.png" />
   <link href="<?= $root ?>/assets/css/font.css" rel="stylesheet" />
@@ -115,16 +111,11 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
   <script>window.MEEL_BASE = <?= json_encode($root) ?>;</script>
 </head>
 <body>
-
   <div id="bgImage" class="game-bg-image hidden"></div>
-
   <div id="dimOverlay" class="game-dim-overlay"></div>
-
   <div id="fpsCounter" class="fps-counter hidden">0 FPS</div>
-
   <canvas id="gameCanvas"></canvas>
   <audio id="audioPlayer" preload="auto"></audio>
-
   <div id="hud" class="hud hidden">
     <div class="hud-top">
       <div class="hud-song-info">
@@ -153,7 +144,6 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
     <button data-lane="2" class="touch-btn tl-2"><span>K</span></button>
     <button data-lane="3" class="touch-btn tl-3"><span>L</span></button>
   </div>
-
   <div id="startOverlay" class="overlay">
     <div class="overlay-content">
       <div class="overlay-emoji" id="overlayEmoji">♪</div>
@@ -168,7 +158,6 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
       </div>
     </div>
   </div>
-
   <div id="pauseOverlay" class="overlay hidden">
     <div class="pause-card">
       <div class="pause-title">Menu Jeda</div>
@@ -192,11 +181,9 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
       </div>
     </div>
   </div>
-
   <div id="optionsOverlay" class="overlay hidden">
     <div class="options-card">
       <div class="options-title">Opsi</div>
-
       <div class="options-group">
         <label class="opt-label">Kecepatan Note</label>
         <input type="range" class="opt-slider" id="optSpeed" min="1" max="20" value="10">
@@ -209,13 +196,11 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
         <label class="opt-label">Volume Permainan</label>
         <input type="range" class="opt-slider" id="optVolume" min="0" max="100" value="80">
       </div>
-
       <div class="options-checks">
         <label class="opt-check"><input type="checkbox" id="optBlurBg"><span class="check-box"></span>Buramkan Latar</label>
         <label class="opt-check"><input type="checkbox" id="optFPS"><span class="check-box"></span>Tampilkan FPS</label>
         <label class="opt-check"><input type="checkbox" id="optLowGfx"><span class="check-box"></span>Grafis Rendah (Efek Mati)</label>
       </div>
-
       <div class="options-footer">
         <button class="pause-btn" onclick="closeOptions()">
           <span class="pause-btn-icon">←</span>
@@ -227,11 +212,9 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
       </div>
     </div>
   </div>
-
   <div id="countdownOverlay" class="overlay hidden" style="background:transparent;backdrop-filter:none;">
     <div class="countdown-num" id="countdownNum">3</div>
   </div>
-
   <div id="resultsOverlay" class="overlay hidden">
     <div class="overlay-content results-content">
       <div class="results-rank" id="resultsRank">S</div>
@@ -256,7 +239,6 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
       </div>
     </div>
   </div>
-
   <script>
     window.MANIA_SONG = <?= $song_json ?>;
     window.MANIA_BEATMAP = <?= $beatmap_json ?>;

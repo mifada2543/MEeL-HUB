@@ -3,14 +3,12 @@
     const ICONS = { like: '❤️', reply: '💬', meelcoin: '🪙', admin_chat: '✉️', system: '🔔' };
     let pollInterval = null;
     let ddOpen = false;
-
     function apiRoot() {
         const el = document.querySelector('nav') || document.body;
         const base = el.querySelector('[data-meel-root]');
         const root = base ? base.getAttribute('data-meel-root') : (window.MEEL_BASE || '');
         return root ? root + '/' : '/';
     }
-
     function fetchCount() {
         fetch(apiRoot() + 'api/notification?action=unread_count', { credentials: 'same-origin' })
             .then(r => r.json())
@@ -24,7 +22,6 @@
             })
             .catch(() => {});
     }
-
     function renderList(containerId, list) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -43,13 +40,11 @@
             </a>
         `).join('');
     }
-
     function escHtml(s) {
         const d = document.createElement('div');
         d.textContent = s || '';
         return d.innerHTML;
     }
-
     function fetchList() {
         fetch(apiRoot() + 'api/notification?action=list&limit=15', { credentials: 'same-origin' })
             .then(r => r.json())
@@ -60,7 +55,6 @@
             })
             .catch(() => {});
     }
-
     function markAllRead() {
         const fd = new FormData();
         fd.append('action', 'mark_all_read');
@@ -74,7 +68,6 @@
             document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
         });
     }
-
     window.toggleNotifDropdown = function() {
         const dd = document.getElementById('notif-dropdown');
         if (!dd) return;
@@ -87,9 +80,7 @@
             dd.classList.remove('open');
         }
     };
-
     window.markAllNotifRead = markAllRead;
-
     document.addEventListener('click', function(e) {
         const dd = document.getElementById('notif-dropdown');
         const btn = document.getElementById('notif-bell-btn');
@@ -99,13 +90,12 @@
             ddOpen = false;
         }
     });
-
     function init() {
         fetchCount();
         if (pollInterval) clearInterval(pollInterval);
-        pollInterval = setInterval(fetchCount, 30000);
+        pollInterval = setInterval(function() { if (!document.hidden) fetchCount(); }, 30000);
+        document.addEventListener('visibilitychange', function() { if (!document.hidden) fetchCount(); });
     }
-
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {

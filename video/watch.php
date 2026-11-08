@@ -5,20 +5,16 @@ include __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../modules/core/CommentRenderer.php';
 require_once __DIR__ . '/../controllers/api/WatchController.php';
 require_once __DIR__ . '/cards.php';
-
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
+$startAt = isset($_GET['t']) ? max(0, (int)$_GET['t']) : 0;
 $user_id = $_SESSION['user_id'] ?? null;
-
 $ctrl = new VideoWatchController($conn, $user_id, $id);
 $ctrl->handleRequest();
-
 extract($ctrl->getViewData(), EXTR_SKIP);
-
 if ($id > 0 && !empty($v['filename']) && function_exists('meel_register_stream_path')) {
     authorize_stream($id);
     meel_register_stream_path((string) $v['filename'], $id);
 }
-
 session_write_close();
 ?>
 <!DOCTYPE html>
@@ -47,13 +43,13 @@ session_write_close();
     ?>
     <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php if ($__thumb_path !== ''): ?>
-        <link rel="preload" as="image" fetchpriority="high"
-            href="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="preload" as="image" fetchpriority="high" href="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>">
     <?php endif; ?>
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
     <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/video/watch/main.css<?= meel_asset_version('assets/css/video/watch/main.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/share-modal.css<?= meel_asset_version('assets/css/shared/share-modal.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
     <?php if ($is_hls): ?>
     <script src="../assets/js/compatibilitas/hls.js<?= meel_asset_version('assets/js/compatibilitas/hls.js') ?>" defer></script>
@@ -62,10 +58,8 @@ session_write_close();
 
 <body class="text-gray-400 min-h-screen">
 <?php include __DIR__ . '/../partials/skip-link.php'; ?>
-
     <nav class="border-b border-white/[.04] sticky top-0 z-50">
         <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
-
             <a href="beranda" class="flex items-center gap-2 flex-shrink-0 px-3 py-2 rounded-xl transition-all" title="MEeL Video">
                 <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center" style="background:var(--meel-red)">
                     <i data-lucide="play" class="nav-logo-icon w-3.5 h-3.5"></i>
@@ -74,7 +68,6 @@ session_write_close();
                     MEeL<span class="text-red-500">Video</span>
                 </span>
             </a>
-
             <div id="navbar-search-wrap" class="flex-1 max-w-md flex items-center gap-2">
                 <div class="relative flex-1 group">
                     <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300 group-focus-within:text-red-500 transition-colors"></i>
@@ -100,7 +93,6 @@ session_write_close();
                     Cari
                 </button>
             </div>
-
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
                 <button id="navbar-search-icon-btn"
                     onclick="document.getElementById('mobile-search-overlay').classList.toggle('open')"
@@ -113,10 +105,8 @@ session_write_close();
             </div>
         </div>
     </nav>
-
     <div id="mobile-search-overlay">
-        <button onclick="document.getElementById('mobile-search-overlay').classList.remove('open')"
-            class="text-gray-600 flex-shrink-0" title="Tutup pencarian">
+        <button onclick="document.getElementById('mobile-search-overlay').classList.remove('open')" class="text-gray-600 flex-shrink-0" title="Tutup pencarian">
             <i data-lucide="arrow-left" class="w-5 h-5"></i>
         </button>
         <div class="relative flex-1">
@@ -133,7 +123,6 @@ session_write_close();
                 enterkeyhint="search">
         </div>
     </div>
-
     <main id="app-content-grid" class="w-full pt-4 sm:pt-4 pb-20 flex flex-col lg:flex-row gap-4">
         <div id="left-column" class="flex-1 space-y-2 sm:space-y-3 px-4 sm:px-5">
             <div id="video-glow-container" class="relative w-full">
@@ -184,7 +173,6 @@ session_write_close();
                     </div>
                 </div>
             </div>
-
             <div id="watch-details-wrapper" class="space-y-2 sm:space-y-3">
                 <div id="video-info" class=" rounded-xl sm:rounded-2xl px-4 sm:px-6 pb-2 sm:pb-3 flex flex-col gap-4">
                     <div class="video-title w-full text-2xl font-bold text-white" id="main-video-title" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
@@ -203,7 +191,6 @@ session_write_close();
                     <?php endif; ?>
                 </div>
                 <div class="h-px bg-white/[.04]"></div>
-
                 <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">
                     <div class="flex items-center gap-3">
                         <a href="../profile/<?= urlencode($v['uploader']) ?>"
@@ -229,6 +216,11 @@ session_write_close();
                         </div>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" id="meel-share-btn"
+                            class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300 cursor-pointer"
+                            title="Bagikan video">
+                            <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Bagikan
+                        </button>
                         <?php if (isset($_SESSION['username'])): ?>
                             <a href="../transcode?id=<?= $id ?>"
                                 class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300 no-underline"
@@ -262,8 +254,7 @@ session_write_close();
                                 b = document.getElementById('btn-read-more');
                             if (d && b && d.scrollHeight > d.clientHeight) b.classList.remove('hidden');
                         });
-</script>
-
+                    </script>
                 <?php endif; ?>
                 <?php if ($is_logged_in): ?>
                     <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
@@ -277,7 +268,6 @@ session_write_close();
                         </button>
                         <div id="comment-preview" class="px-4 sm:px-6 py-3">
                             <?php
-
                             $preview = comment_preview($comments_grouped ?? []);
                             $preview_items = $preview['items'];
                             ?>
@@ -313,7 +303,6 @@ session_write_close();
                                     </button>
                                 </div>
                             </form>
-
                             <div id="comment-list" class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
                                 <?php
                                 $GLOBALS['uploader_id'] = (int)($v['user_id'] ?? 0);
@@ -332,7 +321,6 @@ session_write_close();
                 <?php endif; ?>
             </div>
         </div>
-
         <div id="recommendation-wrapper" class="w-full lg:w-80 flex-shrink-0 space-y-4 px-4 sm:px-5 lg:px-0">
             <div class="text-[9px] text-gray-300 uppercase tracking-[.25em] px-1 flex items-center gap-2 min-w-0" id="rec-title">
                 <i data-lucide="play-circle" class="w-3 h-3 text-red-500 flex-shrink-0"></i>
@@ -354,15 +342,45 @@ session_write_close();
                 <?php endif; ?>
             </div>
         </div>
-
     </main>
-
+    <div id="meel-share-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="meel-share-title">
+        <div class="meel-share-card">
+            <div class="meel-share-head">
+                <div id="meel-share-title" class="meel-share-title">Bagikan</div>
+                <button type="button" id="meel-share-close" class="meel-share-close" aria-label="Tutup">&times;</button>
+            </div>
+            <div class="meel-share-preview">
+                <img id="meel-share-thumb" src="<?= htmlspecialchars($__og_image, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                <span class="meel-share-title-text"><?= htmlspecialchars($v['title'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <div class="meel-share-uploader">
+                <div class="meel-share-avatar" id="meel-share-avatar" aria-hidden="true"><img id="meel-share-avatar-img" src="<?= htmlspecialchars(!empty($v['uploader_pfp']) ? meel_profile_image_url($v['uploader_pfp'], '../profile/upload/') : '../profile/upload/default_avatar.png', ENT_QUOTES, 'UTF-8') ?>" alt="" onerror="this.onerror=null;this.src='../profile/upload/default_avatar.png'"></div>
+                <div class="meel-share-uploader-name"><?= htmlspecialchars($v['uploader'] ?? '', ENT_QUOTES, 'UTF-8') ?></div>
+            </div>
+            <div class="meel-share-row">
+                <input type="text" id="meel-share-url" readonly value="" aria-label="Tautan video">
+                <button type="button" id="meel-share-copy">Salin</button>
+            </div>
+            <label class="meel-share-check">
+                <input type="checkbox" id="meel-share-t">
+                <span>Mulai pada</span>
+                <input type="text" id="meel-share-t-time" value="0:00" inputmode="numeric" autocomplete="off" aria-label="Waktu mulai (M:SS atau detik)">
+            </label>
+            <div class="meel-share-soc-row">
+                <a class="meel-share-soc" data-net="whatsapp" href="#" target="_blank" rel="noopener"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp</a>
+                <a class="meel-share-soc" data-net="twitter" href="#" target="_blank" rel="noopener"><i data-lucide="twitter" class="w-3.5 h-3.5"></i> X</a>
+                <a class="meel-share-soc" data-net="facebook" href="#" target="_blank" rel="noopener"><i data-lucide="facebook" class="w-3.5 h-3.5"></i> Facebook</a>
+                <a class="meel-share-soc" data-net="reddit" href="#" target="_blank" rel="noopener"><i data-lucide="message-square" class="w-3.5 h-3.5"></i> Reddit</a>
+                <a class="meel-share-soc" data-net="telegram" href="#" target="_blank" rel="noopener"><i data-lucide="send" class="w-3.5 h-3.5"></i> Telegram</a>
+            </div>
+            <div id="meel-share-toast" class="meel-share-toast" role="status" aria-live="polite"></div>
+        </div>
+    </div>
     <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
     <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
     <script src="../assets/js/shared/recovery-manager.js<?= meel_asset_version('assets/js/shared/recovery-manager.js') ?>"></script>
     <script src="../assets/js/compatibilitas/plyr.min.js<?= meel_asset_version('assets/js/compatibilitas/plyr.min.js') ?>"></script>
-
     <script>
         window.playerConfig = <?= json_encode([
                                     'videoSrc' => $video_src,
@@ -371,7 +389,9 @@ session_write_close();
                                                         'id' => (int)$id,
                                     'title' => $v['title'] ?? '',
                                     'uploader' => $v['uploader'] ?? '',
-                                    'thumbnail' => $__og_image
+                                    'uploaderPfp' => (!empty($v['uploader_pfp']) ? meel_profile_image_url($v['uploader_pfp'], '../profile/upload/') : ''),
+                                    'thumbnail' => $__og_image,
+                                    'startAt' => $startAt
                                 ]); ?>;
     </script>
     <script>
@@ -385,12 +405,10 @@ session_write_close();
                 if (!w || !h) return;
                 var ratio = w / h;
                 if (!(ratio > 0.2 && ratio < 5)) return;
-
                 wrapper.style.setProperty('--meel-video-ar', w + ' / ' + h);
                 wrapper.style.removeProperty('aspect-ratio');
                 wrapper.setAttribute('data-video-aspect', ratio.toFixed(4));
             }
-
             video.addEventListener('loadedmetadata', applyIntrinsicRatio);
             if (video.readyState >= 1) applyIntrinsicRatio();
         })();
@@ -401,12 +419,12 @@ session_write_close();
     <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
     <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
     <script src="../assets/js/shared/resume-modal.js<?= meel_asset_version('assets/js/shared/resume-modal.js') ?>"></script>
+    <script src="../assets/js/shared/share-modal.js<?= meel_asset_version('assets/js/shared/share-modal.js') ?>"></script>
     <script src="../assets/js/shared/mini-player-popstate.js<?= meel_asset_version('assets/js/shared/mini-player-popstate.js') ?>"></script>
     <script src="../assets/js/video/watch/main.js<?= meel_asset_dir_version('assets/js/video/watch') ?>"></script>
     <script src="../assets/js/shared/comment.js<?= meel_asset_version('assets/js/shared/comment.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
     <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
-
     <script src="../assets/js/video/watch/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/video/watch/search.js') ?>"></script>
     <script>
         document.addEventListener('htmx:beforeRequest', function(e) {
@@ -429,5 +447,4 @@ session_write_close();
 </body>
 
 </html>
-
 <!-- reference build: MEeL-C4H9NO2 [4a9c63ceeb4312a5] -->

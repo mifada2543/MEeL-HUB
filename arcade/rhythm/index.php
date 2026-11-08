@@ -1,16 +1,15 @@
 <?php
+/** @var \mysqli $conn */
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once __DIR__ . '/api/config.php';
-
 $root = meel_base_url_path();
+$og_image_url = (function_exists('detectProtocol') ? detectProtocol() : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $root . '/assets/og-image.png';
 $csrf = $_SESSION['csrf_token'];
-
 $is_logged_in = isset($_SESSION['user_id']);
 $username = $_SESSION['username'] ?? null;
 $user_role = $is_logged_in ? get_user_role($conn, (int)$_SESSION['user_id']) : null;
 $is_admin = ($user_role === 'admin');
-
 $builtin_songs = [];
 $index_path = __DIR__ . '/songs/_index.json';
 if (file_exists($index_path)) {
@@ -41,7 +40,6 @@ if (file_exists($index_path)) {
         }
     }
 }
-
 $custom_songs = [];
 if ($conn && $conn->connect_errno === 0) {
     $result = $conn->query(
@@ -80,7 +78,6 @@ if ($conn && $conn->connect_errno === 0) {
         }
     }
 }
-
 $all_songs = array_merge($builtin_songs, $custom_songs);
 $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
 ?>
@@ -92,7 +89,10 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
   <meta name="description" content="MEeL!Mania — Rhythm game 4-lane. Pilih lagu, atur kecepatan, dan mainkan!" />
   <meta property="og:title" content="MEeL!Mania — Rhythm Arcade" />
   <meta property="og:description" content="Rhythm game 4-lane terinspirasi osu!mania. Tangkap note, raih skor tertinggi!" />
-  <meta property="og:image" content="<?= $root ?>/assets/MEeL.png" />
+  <meta property="og:image" content="<?= htmlspecialchars($og_image_url, ENT_QUOTES, 'UTF-8') ?>" />
+  <meta property="og:image:alt" content="MEeL!Mania — Rhythm Arcade" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="manifest" href="../assets/manifest.json" />
   <title>MEeL!Mania</title>
@@ -103,10 +103,8 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
 </head>
 <body>
 <!-- reference build: MEeL-C8H11NO2 [3c4dc6d7024644fc] -->
-
   <canvas id="bgCanvas"></canvas>
   <div class="bg-overlay"></div>
-
   <nav class="nav-bar">
     <a href="../" class="nav-back" title="Kembali ke Arcade">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -129,7 +127,6 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
       </button>
     </div>
   </nav>
-
   <main class="main-content">
     <section class="hero">
       <div class="hero-glow"></div>
@@ -139,7 +136,6 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
       </h1>
       <p class="hero-sub">Rhythm Game 4-Lane &middot; Tekan A S K L atau sentuh layar</p>
     </section>
-
     <section class="song-section">
       <div class="section-header">
         <h2 class="section-title">Pilih Lagu</h2>
@@ -151,7 +147,6 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
       </div>
       <div id="songGrid" class="song-grid"></div>
     </section>
-
     <section class="speed-section">
       <h3 class="speed-title">Pengubah Kecepatan</h3>
       <div class="speed-options">
@@ -161,7 +156,6 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
         <button class="speed-btn" data-speed="2.5"><span class="speed-icon">◉</span><span class="speed-label">Gila</span><span class="speed-val">2.5×</span></button>
       </div>
     </section>
-
     <div class="play-area">
       <button id="btnPlay" class="play-btn" disabled>
         <span class="play-btn-glow"></span>
@@ -170,7 +164,6 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
       </button>
     </div>
   </main>
-
   <div id="settingsPanel" class="panel-overlay hidden">
     <div class="panel settings-panel">
       <div class="panel-header"><h2>Pengaturan</h2><button class="panel-close" id="closeSettings">✕</button></div>
@@ -183,16 +176,13 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
       </div>
     </div>
   </div>
-
   <div id="statsPanel" class="panel-overlay hidden">
     <div class="panel stats-panel">
       <div class="panel-header"><h2>Statistik Pemain</h2><button class="panel-close" id="closeStats">✕</button></div>
       <div class="panel-body" id="statsBody"></div>
     </div>
   </div>
-
   <div id="toast" class="toast hidden"></div>
-
   <script>
     window.MANIA_SONGS = <?= $songs_json ?>;
     window.MANIA_CSRF = <?= json_encode($csrf) ?>;

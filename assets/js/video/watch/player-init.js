@@ -5,10 +5,8 @@ function applyPlyrControlLabels(plyrInstance) {
       ? plyrInstance.elements.container
       : document;
   if (!host || !host.querySelectorAll) return;
-
   var i18n =
     typeof plyrOptions !== "undefined" && plyrOptions.i18n ? plyrOptions.i18n : {};
-
   var LABELS = {
     mute: [i18n.mute || "Bisukan", i18n.unmute || "Suarakan"],
     captions: [i18n.captions || "Teks"],
@@ -18,13 +16,11 @@ function applyPlyrControlLabels(plyrInstance) {
     airplay: [i18n.airplay || "AirPlay"],
     "play-large": [i18n.play || "Putar video"]
   };
-
   var btns = host.querySelectorAll("button.plyr__control");
   Array.prototype.forEach.call(btns, function (b) {
     var key = b.getAttribute("data-plyr");
     var def = LABELS[key];
     if (!def) return;
-
     var current = b.getAttribute("aria-label");
     if (current && current.trim()) return;
 
@@ -32,7 +28,6 @@ function applyPlyrControlLabels(plyrInstance) {
       b.setAttribute("aria-label", def[0]);
     };
     sync();
-
     if (key === "mute" && plyrInstance.on) {
       var syncMute = function () {
         b.setAttribute("aria-label", plyrInstance.muted ? def[1] : def[0]);
@@ -47,9 +42,7 @@ function applyPlyrControlLabels(plyrInstance) {
     }
   });
 }
-
 function initPlayer() {
-
   if (window.playerConfig) {
     videoSrc = window.playerConfig.videoSrc || videoSrc;
     isHls = window.playerConfig.isHls || !1;
@@ -62,6 +55,7 @@ function initPlayer() {
     videoElement &&
       (isHls && window.Hls && Hls.isSupported()
         ? ((hls = new Hls(HLS_CONFIG)),
+          window.__meelSetBufferMode && window.__meelSetBufferMode(),
           registerHlsErrorListener(hls),
           hls.loadSource(videoSrc),
           hls.attachMedia(videoElement),
@@ -100,5 +94,4 @@ function initPlayer() {
 function registerVideoListeners() {
   videoElement && registerVideoErrorListener(videoElement);
 }
-
 /* reference build: MEeL-C3H7NO2S [2936d01b375366bf] */

@@ -14,9 +14,8 @@ return [
     'toast.css',
     'upscaler.css',
     'utility.css',
-
+    '../shared/share-modal.css',
     '../shared/htmx-anim.css',
     '../shared/light-theme.css',
 ];
-
 /* reference build: MEeL-C5H5N5O [3e78e865b0813e87] */

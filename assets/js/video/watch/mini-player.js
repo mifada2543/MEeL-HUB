@@ -7,7 +7,7 @@ let isMiniPlayerActive = !1,
   miniSnapPending = null;
 const MINI_POS_KEY = MEEL_KEYS.MINI_PLAYER_POS,
   MINI_DRAG_SCALE = 1.02;
-
+window.__meelWatchUrl = watchUrl;
 const MINI_ICON_EXPAND =
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v2H5v5H3V3zm11 0h7v7h-2V5h-5V3zM3 14h2v5h5v2H3v-7zm16 5h-5v2h7v-7h-2v5z"/></svg>',
   MINI_ICON_CLOSE =
@@ -25,7 +25,6 @@ function setNavbarSearchTarget(e) {
       .querySelectorAll('button[hx-include="#v-search-watch"]')
       .forEach((t) => t.setAttribute("hx-target", e)));
 }
-
 function syncMiniPlayerBodyPadding() {
   if (!isMiniPlayerActive || !miniShell)
     return void (document.body.style.paddingBottom = "");
@@ -53,7 +52,6 @@ window.addEventListener("resize", () => {
   miniShell && !miniDragState && clampMiniPlayerToViewport(miniShell);
   syncMiniPlayerBodyPadding();
 });
-
 function saveMiniPlayerPos(e, t) {
   try {
     localStorage.setItem(MINI_POS_KEY, JSON.stringify({ left: e, top: t }));
@@ -112,7 +110,6 @@ function pickMiniCorner(left, top, w, h) {
   }
   return best;
 }
-
 function snapMiniPlayer(e, base, applied) {
   cancelMiniSnap();
 
@@ -253,7 +250,6 @@ function wireMiniMuteToPlayer() {
     player.on("volumechange", updateMiniMuteBtn));
   _miniMuteWiredPlayer = player || null;
 }
-
 let miniShellResizeObserver = null;
 function watchMiniShellSize(e) {
   if (!window.ResizeObserver) return;
@@ -263,7 +259,6 @@ function watchMiniShellSize(e) {
     }));
   miniShellResizeObserver.observe(e);
 }
-
 function buildMiniInfo() {
   const e = document.createElement("div");
   e.style.cssText = "flex:1;min-width:0;";
@@ -324,18 +319,18 @@ function closeMiniPlayer() {
   if (!isMiniPlayerActive) return;
   isMiniPlayerActive = false;
   /* reference build: MEeL-C4H9NO2 [edca1e6fcbd54a93] */
-
+  try {
+    window.__meelSetBufferMode && window.__meelSetBufferMode(false);
+  } catch (e) {}
   isRecovering = !0;
   isCheckingStatus = !1;
   stopStuckDetector();
   stopWaitingTimeout();
   stopPlaybackStartTimeout();
-
   try {
     player && player.pause();
   } catch (e) {}
   destroyPlayer();
-
   if (miniShell) {
     miniShell.remove();
     miniShell = null;
@@ -345,10 +340,8 @@ function closeMiniPlayer() {
   if (typeof glowNavbar !== "undefined" && glowNavbar) {
     glowNavbar.style.removeProperty("--navbar-glow-color");
   }
-
   const grid = document.getElementById("app-content-grid");
   grid && grid.remove();
-
   setNavbarSearchTarget("#video-container");
   const tempTitle = window.__meelTempIndexTitle;
   tempTitle && (document.title = tempTitle);
@@ -480,7 +473,7 @@ function attachMiniPlayerVideoCardListeners(e) {
                 updateMiniMuteBtn(),
                 syncMiniPlayerBodyPadding(),
                 clampMiniPlayerToViewport(miniShell),
-                (watchUrl = n),
+                (watchUrl = window.__meelWatchUrl = n),
                 window.history.pushState({ miniPlayer: !0 }, "", n));
               const y = document.getElementById("temp-index-content");
               y && attachMiniPlayerVideoCardListeners(y);
@@ -502,7 +495,14 @@ function attachMiniPlayerVideoCardListeners(e) {
     return;
   }
   if (isMiniPlayerActive) {
+    try {
+      stopStuckDetector();
+      stopWaitingTimeout();
+      stopPlaybackStartTimeout();
+      isCheckingStatus = !1;
+    } catch (e) {}
     ((isMiniPlayerActive = !1),
+      window.__meelSetBufferMode && window.__meelSetBufferMode(!1),
       setNavbarSearchTarget("#recommendation-column"));
     const e = document.getElementById("main-video-wrapper");
     if (e) {
@@ -573,6 +573,7 @@ function attachMiniPlayerVideoCardListeners(e) {
     const videoWrapper = e;
     try {
       ((isMiniPlayerActive = !0),
+        window.__meelSetBufferMode && window.__meelSetBufferMode(!0),
         setNavbarSearchTarget("#video-container"),
         (savedWatchScrollY = window.scrollY),
         window.scrollTo({ top: 0, left: 0, behavior: "instant" }),

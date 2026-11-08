@@ -25,7 +25,6 @@ function setupMeelPlayerEvents() {
       }
     });
   }
-
   function applyMeelVideoAspect(wrapper, videoW, videoH) {
     if (!wrapper || !videoW || !videoH) return;
     const ratio = videoW / videoH;
@@ -565,6 +564,20 @@ function setupMeelPlayerEvents() {
       }
       function s() {
         7;
+        try {
+          var __startAt =
+            (window.playerConfig && window.playerConfig.startAt) || 0;
+          if (__startAt > 0) {
+            player.currentTime = __startAt;
+            var __p = player.play();
+            if (__p && typeof __p.catch === "function") {
+              __p.catch(function () {});
+            }
+            startStuckDetector();
+            startPlaybackStartTimeout();
+            return;
+          }
+        } catch (e) {}
         if (
           window.meelResumeModal({
             storageKey: storageKeyVideo,
@@ -774,7 +787,8 @@ function setupMeelPlayerEvents() {
           i = new Float32Array(GLOW_W * GLOW_H * 4),
           s = new Float32Array(GLOW_W * GLOW_H * 4);
         let c = null,
-          d = 0;
+          d = 0,
+          uImg = null;
         const p = () => {
             if (!(videoElement.readyState < 2 || document.hidden))
               try {
@@ -788,12 +802,12 @@ function setupMeelPlayerEvents() {
             if (timestamp - d >= GLOW_SAMPLE_INTERVAL) {
               d = timestamp;
               p();
+              for (let e = 0; e < s.length; e++)
+                s[e] += GLOW_LERP_FACTOR * (i[e] - s[e]);
+              const e = uImg || (uImg = l.createImageData(GLOW_W, GLOW_H));
+              for (let t = 0; t < s.length; t++) e.data[t] = Math.round(s[t]);
+              l.putImageData(e, 0, 0);
             }
-            for (let e = 0; e < s.length; e++)
-              s[e] += GLOW_LERP_FACTOR * (i[e] - s[e]);
-            const e = l.createImageData(GLOW_W, GLOW_H);
-            for (let t = 0; t < s.length; t++) e.data[t] = Math.round(s[t]);
-            l.putImageData(e, 0, 0);
             c = requestAnimationFrame(u);
           },
           m = () => {
@@ -932,6 +946,7 @@ function setupMeelPlayerEvents() {
     const n = r.getContext("2d");
     glowNavbar = document.querySelector("nav");
     let glowLastNavbarUpdate = 0;
+    let glowImgData = null;
     const o = () => {
         if (!(videoElement.readyState < 2 || document.hidden))
           try {
@@ -947,35 +962,34 @@ function setupMeelPlayerEvents() {
           return;
         }
         if (r.offsetParent === null) {
-          glowRAF = requestAnimationFrame(a);
+          glowRAF = null;
           return;
         }
         if (timestamp - glowLastSampleTime >= GLOW_SAMPLE_INTERVAL) {
           glowLastSampleTime = timestamp;
           o();
-        }
-        for (let e = 0; e < glowCurData.length; e++)
-          glowCurData[e] +=
-            (glowTargetData[e] - glowCurData[e]) * GLOW_LERP_FACTOR;
-        const e = n.createImageData(GLOW_W, GLOW_H);
-        for (let t = 0; t < glowCurData.length; t++)
-          e.data[t] = Math.round(glowCurData[t]);
-        n.putImageData(e, 0, 0);
-        if (glowNavbar && timestamp - glowLastNavbarUpdate >= 250) {
-          glowLastNavbarUpdate = timestamp;
-          let e = 0,
-            t = 0,
-            n = 0;
-          for (let o = 0; o < GLOW_W; o++) {
-            const l = 4 * o;
-            ((e += glowCurData[l]),
-              (t += glowCurData[l + 1]),
-              (n += glowCurData[l + 2]));
+          for (let e = 0; e < glowCurData.length; e++)
+            glowCurData[e] +=
+              (glowTargetData[e] - glowCurData[e]) * GLOW_LERP_FACTOR;
+          const e = glowImgData || (glowImgData = n.createImageData(GLOW_W, GLOW_H));
+          for (let t = 0; t < glowCurData.length; t++)
+            e.data[t] = Math.round(glowCurData[t]);
+          n.putImageData(e, 0, 0);
+          if (glowNavbar) {
+            let e = 0,
+              t = 0,
+              n = 0;
+            for (let o = 0; o < GLOW_W; o++) {
+              const l = 4 * o;
+              ((e += glowCurData[l]),
+                (t += glowCurData[l + 1]),
+                (n += glowCurData[l + 2]));
+            }
+            const o = Math.round(e / GLOW_W),
+              l = Math.round(t / GLOW_W),
+              a = Math.round(n / GLOW_W);
+            glowNavbar.style.setProperty("--navbar-glow-color", `${o},${l},${a}`);
           }
-          const o = Math.round(e / GLOW_W),
-            l = Math.round(t / GLOW_W),
-            a = Math.round(n / GLOW_W);
-          glowNavbar.style.setProperty("--navbar-glow-color", `${o},${l},${a}`);
         }
         glowRAF = requestAnimationFrame(a);
       },

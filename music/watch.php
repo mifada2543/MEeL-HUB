@@ -8,6 +8,7 @@ require_once __DIR__ . '/cards.php';
 require_once __DIR__ . '/../controllers/api/WatchController.php';
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
+$startAt = isset($_GET['t']) ? max(0, (int)$_GET['t']) : 0;
 $playlist_id = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
 authorize_stream($id);
 $ctrl = new MusicWatchController($conn, $user_id, $id, $playlist_id);
@@ -47,6 +48,7 @@ session_write_close();
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
     <?php meel_css_links('music', '../assets/css/music'); ?>
     <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/share-modal.css<?= meel_asset_version('assets/css/shared/share-modal.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
     <script src="../assets/js/shared/htmx-lucide.js?v=<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
 </head>
@@ -104,12 +106,10 @@ session_write_close();
                             Menit ke‑ <span id="resume-time" class="text-orange-400 font-mono">0:00</span>
                         </div>
                         <div class="flex gap-2">
-                            <button id="btn-resume"
-                                class="flex-1 bg-orange-500 hover:bg-orange-400 text-black font-black uppercase tracking-wider rounded-xl transition-all border-none cursor-pointer">
+                            <button id="btn-resume" class="flex-1 bg-orange-500 hover:bg-orange-400 text-black font-black uppercase tracking-wider rounded-xl transition-all border-none cursor-pointer">
                                 Lanjut
                             </button>
-                            <button id="btn-restart"
-                                class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black uppercase tracking-wider rounded-xl border border-white/10 cursor-pointer transition-all">
+                            <button id="btn-restart" class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black uppercase tracking-wider rounded-xl border border-white/10 cursor-pointer transition-all">
                                 Ulang
                             </button>
                         </div>
@@ -140,13 +140,11 @@ session_write_close();
                                 <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
                                 <span id="realtime-bitrate">0</span> kbps
                             </span>
-                            <button id="btn-loop" onclick="toggleLoop()"
-                                class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
+                            <button id="btn-loop" onclick="toggleLoop()" class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
                                 <i data-lucide="repeat" class="w-3 h-3"></i>
                                 <span id="loop-text">Loop Mati</span>
                             </button>
-                            <button id="btn-vis" onclick="toggleVisualizer()"
-                                class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
+                            <button id="btn-vis" onclick="toggleVisualizer()" class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
                                 <i data-lucide="activity" class="w-3 h-3"></i>
                                 <span id="vis-text">Vis Aktif</span>
                             </button>
@@ -156,8 +154,7 @@ session_write_close();
                                 <span id="eq-text">EQ Mati</span>
                             </button>
                             <?php if ($show_lyric_btn): ?>
-                            <button id="btn-karaoke" onclick="<?= htmlspecialchars($lyric_btn_action) ?>"
-                                class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
+                            <button id="btn-karaoke" onclick="<?= htmlspecialchars($lyric_btn_action) ?>" class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
                                 <i data-lucide="<?= $lyric_btn_icon ?>" class="w-3 h-3"></i>
                                 <?= $lyric_btn_text ?>
                             </button>
@@ -170,8 +167,7 @@ session_write_close();
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div class="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">Equalizer</div>
                         <div id="eq-preset-dropdown" class="relative w-full sm:w-auto">
-                            <button id="eq-preset-button" type="button" onclick="toggleEqPresetDropdown()"
-                                class="w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 bg-gray-900/80 border border-white/[.10] text-gray-200 text-[11px] rounded-lg px-3 py-2 outline-none focus:border-orange-500/40 transition-all">
+                            <button id="eq-preset-button" type="button" onclick="toggleEqPresetDropdown()" class="w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 bg-gray-900/80 border border-white/[.10] text-gray-200 text-[11px] rounded-lg px-3 py-2 outline-none focus:border-orange-500/40 transition-all">
                                 <span id="eq-preset-label">Datar</span>
                                 <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
                             </button>
@@ -208,7 +204,6 @@ session_write_close();
                     </div>
                 </div>
                 <div class="p-4 sm:p-5">
-
                     <div id="player-audio-slot" class="w-full"></div>
                 </div>
                 <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-white/[.04] bg-black/10">
@@ -234,6 +229,12 @@ session_write_close();
                                 <?= number_format($v['views'] ?? 0) ?> tayangan &nbsp;•&nbsp; <?= time_ago($v['upload_date']) ?>
                             </div>
                         </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" id="meel-share-btn"
+                            class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer bg-white/[.04] border border-white/[.06] text-gray-400 hover:text-orange-400 hover:border-orange-500/30">
+                            <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Bagikan
+                        </button>
                     </div>
                     <?php if (isset($_SESSION['username'])): ?>
                         <div class="flex items-center gap-2 flex-wrap">
@@ -321,7 +322,6 @@ session_write_close();
                                     </button>
                                 </div>
                             </form>
-
                             <div id="comment-list" class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
                                 <?php
                                 $GLOBALS['uploader_id'] = (int)($v['user_id'] ?? 0);
@@ -439,8 +439,7 @@ session_write_close();
                             <input type="text" name="playlist_name"
                                 class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 transition-all min-w-0"
                                 placeholder="Nama daftar putar baru..." required>
-                            <button type="submit"
-                                class="bg-orange-500 hover:bg-orange-400 text-black text-xs font-black uppercase px-4 py-2 rounded-xl border-none cursor-pointer transition-all flex-shrink-0">
+                            <button type="submit" class="bg-orange-500 hover:bg-orange-400 text-black text-xs font-black uppercase px-4 py-2 rounded-xl border-none cursor-pointer transition-all flex-shrink-0">
                                 Buat
                             </button>
                         </form>
@@ -505,6 +504,39 @@ session_write_close();
             </div>
         </div>
     </main> <?php include __DIR__ . '/../partials/footer.php'; ?>
+    <div id="meel-share-modal" class="hidden meel-share-music" role="dialog" aria-modal="true" aria-labelledby="meel-share-title">
+        <div class="meel-share-card">
+            <div class="meel-share-head">
+                <div id="meel-share-title" class="meel-share-title">Bagikan</div>
+                <button type="button" id="meel-share-close" class="meel-share-close" aria-label="Tutup">&times;</button>
+            </div>
+            <div class="meel-share-preview">
+                <img id="meel-share-thumb" src="<?= htmlspecialchars($__og_image, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                <span class="meel-share-title-text"><?= htmlspecialchars($v['title'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <div class="meel-share-uploader">
+                <div class="meel-share-avatar" id="meel-share-avatar" aria-hidden="true"><img id="meel-share-avatar-img" src="<?= htmlspecialchars((!empty($v['uploader_pfp']) ? meel_profile_image_url($v['uploader_pfp'], '../profile/upload/') : '../profile/upload/default_avatar.png'), ENT_QUOTES, 'UTF-8') ?>" alt="" onerror="this.onerror=null;this.src='../profile/upload/default_avatar.png'"></div>
+                <div class="meel-share-uploader-name"><?= htmlspecialchars($v['artist'] ?? '', ENT_QUOTES, 'UTF-8') ?></div>
+            </div>
+            <div class="meel-share-row">
+                <input type="text" id="meel-share-url" readonly value="" aria-label="Tautan lagu">
+                <button type="button" id="meel-share-copy">Salin</button>
+            </div>
+            <label class="meel-share-check">
+                <input type="checkbox" id="meel-share-t">
+                <span>Mulai pada</span>
+                <input type="text" id="meel-share-t-time" value="0:00" inputmode="numeric" autocomplete="off" aria-label="Waktu mulai (M:SS atau detik)">
+            </label>
+            <div class="meel-share-soc-row">
+                <a class="meel-share-soc" data-net="whatsapp" href="#" target="_blank" rel="noopener"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp</a>
+                <a class="meel-share-soc" data-net="twitter" href="#" target="_blank" rel="noopener"><i data-lucide="twitter" class="w-3.5 h-3.5"></i> X</a>
+                <a class="meel-share-soc" data-net="facebook" href="#" target="_blank" rel="noopener"><i data-lucide="facebook" class="w-3.5 h-3.5"></i> Facebook</a>
+                <a class="meel-share-soc" data-net="reddit" href="#" target="_blank" rel="noopener"><i data-lucide="message-square" class="w-3.5 h-3.5"></i> Reddit</a>
+                <a class="meel-share-soc" data-net="telegram" href="#" target="_blank" rel="noopener"><i data-lucide="send" class="w-3.5 h-3.5"></i> Telegram</a>
+            </div>
+            <div id="meel-share-toast" class="meel-share-toast" role="status" aria-live="polite"></div>
+        </div>
+    </div>
     <script>
         window.MEEL_MUSIC_CONFIG = {
             id: <?= $id ?>,
@@ -513,6 +545,9 @@ session_write_close();
             nextSongUrl: <?= json_encode($next_song_url) ?>,
             title: <?= json_encode($v['title']) ?>,
             artist: <?= json_encode($v['artist'] ?? '') ?>,
+            uploader: <?= json_encode($v['uploader'] ?? '') ?>,
+            uploaderPfp: <?= json_encode((!empty($v['uploader_pfp']) ? meel_profile_image_url($v['uploader_pfp'], '../profile/upload/') : '')) ?>,
+            startAt: <?= $startAt ?>,
             thumbnail: <?= json_encode($v['thumbnail']) ?>,
             thumbnailUrl: <?= json_encode(music_thumbnail_url($v['thumbnail'])) ?>,
             filename: <?= json_encode($v['filename']) ?>,
@@ -571,6 +606,7 @@ session_write_close();
     <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
     <script src="../assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
     <script src="../assets/js/shared/resume-modal.js<?= meel_asset_version('assets/js/shared/resume-modal.js') ?>"></script>
+    <script src="../assets/js/shared/share-modal.js<?= meel_asset_version('assets/js/shared/share-modal.js') ?>"></script>
     <script src="../assets/js/shared/mini-player-popstate.js<?= meel_asset_version('assets/js/shared/mini-player-popstate.js') ?>"></script>
     <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>
     <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
@@ -599,5 +635,4 @@ session_write_close();
 </body>
 
 </html>
-
 <!-- reference build: MEeL-C9H11NO2 [8683a52c224cec96] -->
