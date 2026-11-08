@@ -167,3 +167,30 @@ function buildPlyrMediaMetadata() {
 function refreshPlyrMediaMetadata() {
   plyrOptions.mediaMetadata = buildPlyrMediaMetadata();
 }
+var __meelBufferMini = !1;
+function __meelIsMiniShellVisible() {
+  var s = document.getElementById("mini-player-shell");
+  if (!s) return !1;
+  try {
+    return window.getComputedStyle(s).display !== "none";
+  } catch (e) {
+    return s.style.display !== "none";
+  }
+}
+function __meelApplyBufferMode() {
+  var b = __meelBufferMini || document.hidden ? 15 : 45;
+  HLS_CONFIG.maxBufferLength = b;
+  try {
+    if (typeof hls !== "undefined" && hls && hls.config)
+      hls.config.maxBufferLength = b;
+  } catch (e) {}
+  return b;
+}
+window.__meelSetBufferMode = function (mini) {
+  if (mini === undefined) mini = __meelIsMiniShellVisible();
+  __meelBufferMini = !!mini;
+  return __meelApplyBufferMode();
+};
+document.addEventListener("visibilitychange", function () {
+  __meelApplyBufferMode();
+});

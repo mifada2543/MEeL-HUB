@@ -319,6 +319,9 @@ function closeMiniPlayer() {
   if (!isMiniPlayerActive) return;
   isMiniPlayerActive = false;
   /* reference build: MEeL-C4H9NO2 [edca1e6fcbd54a93] */
+  try {
+    window.__meelSetBufferMode && window.__meelSetBufferMode(false);
+  } catch (e) {}
   isRecovering = !0;
   isCheckingStatus = !1;
   stopStuckDetector();
@@ -499,6 +502,7 @@ function attachMiniPlayerVideoCardListeners(e) {
       isCheckingStatus = !1;
     } catch (e) {}
     ((isMiniPlayerActive = !1),
+      window.__meelSetBufferMode && window.__meelSetBufferMode(!1),
       setNavbarSearchTarget("#recommendation-column"));
     const e = document.getElementById("main-video-wrapper");
     if (e) {
@@ -569,6 +573,7 @@ function attachMiniPlayerVideoCardListeners(e) {
     const videoWrapper = e;
     try {
       ((isMiniPlayerActive = !0),
+        window.__meelSetBufferMode && window.__meelSetBufferMode(!0),
         setNavbarSearchTarget("#video-container"),
         (savedWatchScrollY = window.scrollY),
         window.scrollTo({ top: 0, left: 0, behavior: "instant" }),

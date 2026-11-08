@@ -1,13 +1,11 @@
 (function () {
   var el = document.getElementById("coin-indicator");
   if (!el) return;
-
   var countdownEl = document.getElementById("coin-countdown");
   var currentEl = document.getElementById("coin-current");
   var maxEl = document.getElementById("coin-max");
   var role = el.getAttribute("data-role");
   if (role === "admin") return;
-
   var remaining = Math.max(0, parseInt(el.getAttribute("data-countdown"), 10) || 0);
   var balance = parseInt(el.getAttribute("data-balance"), 10);
   if (isNaN(balance)) {
@@ -21,11 +19,9 @@
   var receivedAt = 0;
   var inFlight = false;
   var retryAt = 0;
-
   function pad(n) {
     return n < 10 ? "0" + n : "" + n;
   }
-
   function formatTime(s) {
     var h = Math.floor(s / 3600);
     var m = Math.floor((s % 3600) / 60);
@@ -33,13 +29,11 @@
     if (h > 0) return pad(h) + ":" + pad(m) + ":" + pad(sec);
     return pad(m) + ":" + pad(sec);
   }
-
   function clockMs() {
     return window.performance && typeof window.performance.now === "function"
       ? window.performance.now()
       : Date.now();
   }
-
   function paint() {
     if (!countdownEl) return;
     if (maxCoins > 0 && balance >= maxCoins) {
@@ -50,13 +44,11 @@
     el.classList.remove("coin-maxed");
     countdownEl.textContent = remaining > 0 ? formatTime(remaining) : "Siap";
   }
-
   function refreshRemaining() {
     if (!nextRefillAt || !serverTime) return;
     var elapsed = Math.max(0, (clockMs() - receivedAt) / 1000);
     remaining = Math.max(0, Math.round(nextRefillAt - (serverTime + elapsed)));
   }
-
   function fetchBalance() {
     if (inFlight || !userId) return;
     if (maxCoins > 0 && balance >= maxCoins) return;
@@ -71,7 +63,6 @@
       })
       .then(function (data) {
         if (!data || !data.enabled || data.is_admin) return;
-
         if (typeof data.balance === "number") {
           balance = data.balance;
           if (currentEl) currentEl.textContent = data.balance;
@@ -80,7 +71,6 @@
           maxCoins = data.max;
           if (maxEl) maxEl.textContent = data.max;
         }
-
         if (
           typeof data.next_refill_at === "number" &&
           typeof data.server_time === "number"
@@ -93,7 +83,6 @@
           nextRefillAt = 0;
           remaining = Math.max(0, data.countdown);
         }
-
         paint();
       })
       .catch(function () {})
@@ -101,8 +90,8 @@
         inFlight = false;
       });
   }
-
   function tick() {
+    if (document.hidden) return;
     refreshRemaining();
     paint();
     if (maxCoins > 0 && balance >= maxCoins) return;
@@ -111,11 +100,9 @@
       fetchBalance();
     }
   }
-
   paint();
   setInterval(tick, 1000);
-  setInterval(fetchBalance, 60000);
-
+  setInterval(function() { if (!document.hidden) fetchBalance(); }, 60000);
   if (document.addEventListener) {
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden) fetchBalance();
@@ -123,8 +110,6 @@
   }
   window.addEventListener("focus", fetchBalance);
   window.addEventListener("online", fetchBalance);
-
-  // Skip initial fetch if already at max — API will confirm, no need to round-trip
   if (!(maxCoins > 0 && balance >= maxCoins)) {
     fetchBalance();
   }
