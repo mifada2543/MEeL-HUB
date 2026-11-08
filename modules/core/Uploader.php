@@ -353,8 +353,8 @@ class Uploader
                 $thumb_name,
                 $duration > 0 ? $duration : null
             );
-            if (!$ins[0]) {
-                throw new \RuntimeException($ins[1]);
+            if (!(($ins[0] ?? false))) {
+                throw new \RuntimeException((string) ($ins[1] ?? 'Insert musik gagal.'));
             }
             $music_id = (int)$this->conn->insert_id;
 

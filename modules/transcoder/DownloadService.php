@@ -534,7 +534,16 @@ class DownloadService extends TranscoderBase
                 'duration' => $duration,
                 'description' => $description,
             ];
-            return 'ENCODE_MUSIC:' . $raw_file;
+            // Payload eksplisit agar upload_advanced.php tidak bergantung
+            // pada $_SESSION yang sudah session_write_close().
+            $metaPayload = base64_encode(json_encode([
+                'title' => $title,
+                'artist' => $artist,
+                'album' => $album,
+                'duration' => $duration,
+                'description' => $description,
+            ]));
+            return 'ENCODE_MUSIC:' . $raw_file . '|' . $metaPayload;
         }
         return "File audio tidak ditemukan setelah download.";
     }
@@ -646,7 +655,8 @@ class DownloadService extends TranscoderBase
             $thumb_generated,
             $title,
             $description,
-            $duration
+            $duration,
+            $queue_id
         )) {
             return "";
         }
@@ -1001,7 +1011,8 @@ class DownloadService extends TranscoderBase
         bool $thumb_generated,
         string $title,
         string $description,
-        int $duration
+        int $duration,
+        int $queue_id = 0
     ): bool {
         $this->touchAccounting('persisting');
         if (!$this->isClientConnected()) {
@@ -1077,6 +1088,18 @@ class DownloadService extends TranscoderBase
                 );
                 if (!$capture['ok']) {
                     throw new \RuntimeException($capture['error']);
+                }
+            }
+            // Settlement di dalam transaksi yang sama agar tidak ada
+            // jendela commit-video-tapi-queue-belum.
+            if ($queue_id > 0) {
+                $qStmt = $this->conn->prepare(
+                    "UPDATE upload_queue SET status = 'completed' WHERE id = ? AND status IN ('pending', 'processing')"
+                );
+                if ($qStmt) {
+                    $qStmt->bind_param('i', $queue_id);
+                    $qStmt->execute();
+                    $qStmt->close();
                 }
             }
             $this->conn->commit();

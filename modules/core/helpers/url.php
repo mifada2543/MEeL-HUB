@@ -28,7 +28,7 @@ if (!function_exists('resolve_binary')) {
             $resolved = trim((string)shell_exec("command -v " . escapeshellarg($candidate) . " 2>/dev/null"));
             if ($resolved !== '') return $resolved;
         }
-        return $candidates[0];
+        return $candidates[0] ?? '';
     }
 }
 

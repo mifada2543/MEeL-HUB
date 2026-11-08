@@ -91,7 +91,8 @@ class Transcoder extends TranscoderBase
             $duration,
             $description,
             $holdId,
-            $attemptId
+            $attemptId,
+            $queueId
         );
     }
 

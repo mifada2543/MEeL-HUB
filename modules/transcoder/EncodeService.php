@@ -28,20 +28,24 @@ class EncodeService extends TranscoderBase
         putenv("PATH=/usr/local/bin:/usr/bin:/bin");
         $music_dir = meel_media_base_path('music') . '/file';
         if (($err = $this->assertEncodeStorageReady($music_dir)) !== null) {
+            $this->settleQueue('failed');
             return $err;
         }
         if (!$this->isValidSourceToken($temp_file)) {
             error_log("[MEeL] encodeMusic: token input tidak valid ($temp_file)");
+            $this->settleQueue('failed');
             return ['status' => 'error', 'msg' => "Token file sumber audio tidak valid."];
         }
         $shm_temp = $this->getShmTempPath();
         $input_path = $shm_temp . '/' . $temp_file;
         if (!file_exists($input_path)) {
             error_log("[MEeL] encodeMusic: File input tidak ditemukan: $input_path");
+            $this->settleQueue('failed');
             return ['status' => 'error', 'msg' => "File sumber audio tidak ditemukan di server."];
         }
         if (filesize($input_path) === 0) {
             error_log("[MEeL] encodeMusic: File input kosong: $input_path");
+            $this->settleQueue('failed');
             return ['status' => 'error', 'msg' => "File sumber audio kosong."];
         }
         $lock_path = sys_get_temp_dir() . '/meel_encode_' . md5($temp_file) . '.lock';
@@ -52,6 +56,7 @@ class EncodeService extends TranscoderBase
             if (is_resource($lock_fp)) {
                 fclose($lock_fp);
             }
+            $this->settleQueue('failed');
             return ['status' => 'error', 'msg' => "Gagal mengunci file untuk pemrosesan."];
         }
         try {
@@ -93,6 +98,7 @@ class EncodeService extends TranscoderBase
             }
             if (!$this->isClientConnected()) {
                 $this->removeFile($final_path);
+                $this->settleQueue('failed');
                 return ['status' => 'error', 'msg' => 'Koneksi upload terputus; encode dibatalkan tanpa memotong coin.'];
             }
             $temp_base = pathinfo($temp_file, PATHINFO_FILENAME);
@@ -102,6 +108,7 @@ class EncodeService extends TranscoderBase
                 $thumb_path = meel_media_base_path('music') . '/thumbnail/' . $thumb_result;
                 if (!is_file($thumb_path) || filesize($thumb_path) < 1) {
                     $this->removeFile($final_path);
+                    $this->settleQueue('failed');
                     return ['status' => 'error', 'msg' => 'Thumbnail musik tidak ditemukan setelah encode.'];
                 }
             }
@@ -111,8 +118,8 @@ class EncodeService extends TranscoderBase
             $this->conn->begin_transaction();
             try {
                 $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $metadata, $final_fname, $thumb_result, $final_duration > 0 ? $final_duration : null);
-                if (!$ins[0]) {
-                    throw new \RuntimeException($ins[1]);
+                if (!(($ins[0] ?? false))) {
+                    throw new \RuntimeException((string) ($ins[1] ?? 'Insert musik gagal.'));
                 }
                 $musicId = (int)$this->conn->insert_id;
                 if ($this->currentHoldId > 0) {
@@ -129,6 +136,9 @@ class EncodeService extends TranscoderBase
                         throw new \RuntimeException($capture['error']);
                     }
                 }
+                // Settlement di dalam transaksi yang sama agar tidak ada
+                // jendela commit-media-tapi-queue-belum.
+                $this->settleQueue('completed');
                 $this->conn->commit();
             } catch (\Throwable $e) {
                 $this->conn->rollback();
@@ -136,6 +146,7 @@ class EncodeService extends TranscoderBase
                 if ($thumb_result !== 'music_default.png') {
                     $this->removeFile(meel_media_base_path('music') . '/thumbnail/' . $thumb_result);
                 }
+                $this->settleQueue('failed');
                 return ['status' => 'error', 'msg' => 'Upload musik gagal diverifikasi: ' . $e->getMessage()];
             }
             $this->removeFile($input_path);
@@ -146,6 +157,10 @@ class EncodeService extends TranscoderBase
                 $this->settleQueue('completed');
             }
             return ['status' => 'success', 'filename' => $final_fname, 'id' => $musicId];
+        } catch (\Throwable $e) {
+            error_log('[MEeL] encodeMusic exception: ' . $e->getMessage());
+            $this->settleQueue('failed');
+            return ['status' => 'error', 'msg' => 'Gagal mengonversi audio: ' . $e->getMessage()];
         } finally {
             if ($lock_held) {
                 flock($lock_fp, LOCK_UN);
