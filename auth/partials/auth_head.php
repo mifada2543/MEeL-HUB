@@ -1,14 +1,13 @@
 <?php
 $auth_extra_style = $auth_extra_style ?? '';
 $auth_extra_head = $auth_extra_head ?? '';
+$auth_og_image = (function_exists('detectProtocol') ? detectProtocol() : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . (function_exists('base_url') ? base_url('/assets/og-image.png') : '/assets/og-image.png');
 ?>
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <script>
     (function(){
       try {
@@ -27,11 +26,13 @@ $auth_extra_head = $auth_extra_head ?? '';
       }
     })();
     </script>
-
     <meta name="description" content="<?= htmlspecialchars($auth_description ?? '') ?>">
     <meta property="og:title" content="<?= htmlspecialchars($auth_og_title ?? '') ?>">
     <meta property="og:description" content="<?= htmlspecialchars($auth_og_desc ?? '') ?>">
-    <meta property="og:image" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') ?>/assets/MEeL.png">
+    <meta property="og:image" content="<?= htmlspecialchars($auth_og_image, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:image:alt" content="<?= htmlspecialchars($auth_og_title ?? 'MEeL') ?>">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta property="og:url" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $_SERVER['REQUEST_URI'] ?>">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
@@ -48,5 +49,4 @@ $auth_extra_head = $auth_extra_head ?? '';
 
 <body class="text-gray-200 min-h-screen flex items-center justify-center p-4">
 <?php include __DIR__ . '/../../partials/skip-link.php'; ?>
-
 <!-- reference build: MEeL-C10H12N2O [c3c199622369f514] -->

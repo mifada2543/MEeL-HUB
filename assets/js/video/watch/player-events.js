@@ -25,7 +25,6 @@ function setupMeelPlayerEvents() {
       }
     });
   }
-
   function applyMeelVideoAspect(wrapper, videoW, videoH) {
     if (!wrapper || !videoW || !videoH) return;
     const ratio = videoW / videoH;
@@ -565,6 +564,20 @@ function setupMeelPlayerEvents() {
       }
       function s() {
         7;
+        try {
+          var __startAt =
+            (window.playerConfig && window.playerConfig.startAt) || 0;
+          if (__startAt > 0) {
+            player.currentTime = __startAt;
+            var __p = player.play();
+            if (__p && typeof __p.catch === "function") {
+              __p.catch(function () {});
+            }
+            startStuckDetector();
+            startPlaybackStartTimeout();
+            return;
+          }
+        } catch (e) {}
         if (
           window.meelResumeModal({
             storageKey: storageKeyVideo,

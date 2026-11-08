@@ -1,7 +1,6 @@
 /* reference build: MEeL-C10H12N2O [88453ea80a37d31b] */
 (function () {
   "use strict";
-
   function toPathname(absSrc) {
     try {
       return new URL(absSrc, window.location.href).pathname;
@@ -9,9 +8,7 @@
       return String(absSrc);
     }
   }
-
   var loadedScriptSrcs = new Set();
-
   function seedLoadedScripts() {
     Array.prototype.forEach.call(
       document.querySelectorAll("script[src]"),
@@ -26,14 +23,11 @@
   } else {
     seedLoadedScripts();
   }
-
   var SESSION_TS = Date.now();
-
   function loadScriptOnce(absSrc) {
     var key = toPathname(absSrc);
     if (loadedScriptSrcs.has(key)) return Promise.resolve();
     loadedScriptSrcs.add(key);
-
     var buster = absSrc.indexOf("?") === -1 ? "?_meel=" : "&_meel=";
     var srcWithBuster = absSrc + buster + SESSION_TS;
     return new Promise(function (resolve, reject) {
@@ -49,11 +43,9 @@
       document.body.appendChild(s);
     });
   }
-
   function toAbsolute(relSrc) {
     return new URL(relSrc, window.location.href).href;
   }
-
   var loadedStyleHrefs = new Set(
     Array.prototype.map.call(
       document.querySelectorAll('link[rel="stylesheet"][href]'),
@@ -62,7 +54,6 @@
       },
     ),
   );
-
   function ensureViewStyles(doc) {
     var links = doc.querySelectorAll('link[rel="stylesheet"][href]');
     for (var i = 0; i < links.length; i++) {
@@ -75,7 +66,6 @@
       document.head.appendChild(link);
     }
   }
-
   var DIRECT_SCRIPTS = {
     watch: [
       "../assets/js/shared/state-keys.js",
@@ -86,6 +76,7 @@
       "../assets/js/shared/plyr-config.js",
       "../assets/js/shared/format-time.js",
       "../assets/js/shared/resume-modal.js",
+      "../assets/js/shared/share-modal.js",
       "../assets/js/shared/mini-player-popstate.js",
       "../assets/js/shared/media-session.js",
       "../assets/js/shared/head-meta.js",
@@ -114,13 +105,11 @@
     watch: "../assets/js/music/watch/main.js",
     index: "../assets/js/music/index/main.js",
   };
-
   async function ensureViewScripts(viewType) {
     var directList = DIRECT_SCRIPTS[viewType] || [];
     for (var i = 0; i < directList.length; i++) {
       await loadScriptOnce(toAbsolute(directList[i]));
     }
-
     await loadScriptOnce(toAbsolute(BUNDLE_LOADER_SRC[viewType]));
     var bundleInfo = window[BUNDLE_GLOBAL[viewType]];
     if (bundleInfo && Array.isArray(bundleInfo.files)) {
@@ -129,13 +118,11 @@
       }
     }
   }
-
   function runInlineScript(code) {
     var s = document.createElement("script");
     s.textContent = code;
     document.body.appendChild(s);
   }
-
   function parseConfigJson(text, varName) {
     try {
       var marker = "window." + varName + " =";
@@ -143,7 +130,6 @@
       if (idx === -1) return undefined;
       var open = text.indexOf("{", idx + marker.length);
       if (open === -1) return undefined;
-
       var depth = 0;
       var inStr = null;
       var end = -1;
@@ -176,7 +162,6 @@
       return undefined;
     }
   }
-
   function quoteObjectKeys(literal) {
     var out = "";
     var inStr = null;
@@ -230,14 +215,12 @@
     }
     return out;
   }
-
   function applyInlineConfig(doc, viewType) {
     var varName =
       viewType === "watch" ? "MEEL_MUSIC_CONFIG" : "MEEL_INDEX_CONFIG";
     var scripts = doc.querySelectorAll("script:not([src])");
     for (var i = 0; i < scripts.length; i++) {
       var text = scripts[i].textContent || "";
-
       if (text.indexOf("window." + varName + " =") === -1) continue;
       try {
         runInlineScript(text);
@@ -259,7 +242,6 @@
       return;
     }
   }
-
   window.meelNavigateView = async function (url, viewType, options) {
     options = options || {};
     try {
@@ -267,9 +249,7 @@
       if (!res.ok) throw new Error("HTTP " + res.status);
       var html = await res.text();
       var doc = new DOMParser().parseFromString(html, "text/html");
-
       ensureViewStyles(doc);
-
       var persisted = Array.prototype.slice.call(
         document.body.querySelectorAll("[data-meel-persist]"),
       );
@@ -277,42 +257,32 @@
       persisted.forEach(function (n) {
         holder.appendChild(n);
       });
-
       var noscripts = doc.body.querySelectorAll("noscript");
       for (var ns = 0; ns < noscripts.length; ns++) {
         if (noscripts[ns].parentNode)
           noscripts[ns].parentNode.removeChild(noscripts[ns]);
       }
-
       document.body.innerHTML = "";
       Array.prototype.forEach.call(doc.body.children, function (node) {
         if (node.tagName === "SCRIPT" && node.src) return;
         document.body.appendChild(document.importNode(node, true));
       });
-
       document.body.appendChild(holder);
-
       var inlineScripts = document.body.querySelectorAll("script:not([src])");
       for (var k = 0; k < inlineScripts.length; k++) {
         runInlineScript(inlineScripts[k].textContent);
       }
-
       document.title = doc.title;
       applyInlineConfig(doc, viewType);
-
       if (options.pushState !== false) {
         window.history.pushState({ meelView: viewType }, "", url);
       }
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-
       await ensureViewScripts(viewType);
-
       if (window.meelUpdateHeadMeta) window.meelUpdateHeadMeta(doc);
-
       if (typeof options.onAfterSwap === "function") {
         options.onAfterSwap(doc);
       }
-
       if (window.lucide) window.lucide.createIcons();
       if (window.htmx) window.htmx.process(document.body);
       return true;
@@ -321,7 +291,6 @@
         "❌ view-router: navigasi AJAX gagal, fallback ke reload penuh:",
         err,
       );
-
       window.location.href = url;
       return false;
     }

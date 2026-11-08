@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[🇮🇩 Indonesian](README.md)
+[🇮🇩 Indonesia](README.md) · **🇬🇧 English**
 
 </div>
 
@@ -16,13 +16,17 @@
 
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
-[![FFmpeg](https://img.shields.io/badge/FFmpeg-6.0%2B-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-n6.1.1%20%28bundled%29-007808?style=flat-square&logo=ffmpeg&logoColor=white)](tools/ffmpeg-lite)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue?style=flat-square)](LICENSE)
 [![CI](https://github.com/mifada2543/MEeL-HUB/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/MEeL-HUB/actions/workflows/ci.yml)
 [![GitHub Stars](https://img.shields.io/github/stars/mifada2543/MEeL-HUB?style=social)](https://github.com/mifada2543/MEeL-HUB)
 
 </div>
-
+<div align="center">
+  <a href="https://github.com/mifada2543/MEeL-HUB">
+    <img src="assets/og-image.png" alt="MEeL-HUB — self-hosted PHP & MySQL media hub for HLS video streaming, lossless music, digital books, and cloud drive" width="100%"/>
+  </a>
+</div>
 <table>
   <tr>
     <td align="center"><strong>HUB Home</strong></td>
@@ -42,6 +46,7 @@
 
 - [📸 Screenshot Gallery](#-screenshot-gallery)
 - [✨ Features](#-features)
+- [📋 Requirements](#-requirements)
 - [⚡ Quick Start](#-quick-start)
 - [🛠 Tech Stack](#-tech-stack)
 - [📁 Project Structure](#-project-structure)
@@ -49,7 +54,10 @@
 - [🧪 Testing](#-testing)
 - [👥 Role-Based Access Control](#-role-based-access-control)
 - [🤝 Contributing](#-contributing)
+- [🔐 Security](#-security)
 - [📄 License](#-license)
+- [⚠️ Disclaimer](#-disclaimer)
+- [📬 Contact](#-contact)
 
 ---
 
@@ -58,7 +66,7 @@
 Every page below is reachable **without logging in** (guest mode). All images are captured straight from a running MEeL instance, so what you see here always matches the code that is currently running.
 
 <details>
-<summary><strong>🖼️ See 15 more screenshots</strong></summary>
+<summary><strong>🖼️ See 15 more screenshots (18 total)</strong></summary>
 
 <h3 align="center">🎬 Video</h3>
 
@@ -144,6 +152,20 @@ Every page below is reachable **without logging in** (guest mode). All images ar
 
 ---
 
+## 📋 Requirements
+
+| Component       | Minimum                                                                                                              |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **PHP**         | 8.2+ with `mysqli`, `pdo_mysql`, `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, and `curl`                      |
+| **Database**    | MySQL 5.7+ / MariaDB 10.2+ with `utf8mb4` encoding                                                                   |
+| **Web server**  | Apache 2.4+ with `mod_rewrite` and `mod_headers`                                                                     |
+| **Media**       | `ffmpeg-lite` 6.1.1 (bundled in `tools/ffmpeg-lite`) · `yt-dlp` for URL downloads                                    |
+| **Resources**   | 2 GB RAM (4 GB+ for transcoding) · 10 GB+ storage                                                                    |
+
+> `install.sh` installs and verifies all of the dependencies above automatically.
+
+---
+
 ## ⚡ Quick Start
 
 ```bash
@@ -204,8 +226,6 @@ php tools/check_deploy.php
 | **Security** | CSRF · Rate Limiting · MFA · Audit Log · RBAC |
 | **Extras**   | PWA · Service Worker · Class-Map Autoloader   |
 
-> Requires: PHP 8.2+ with `mysqli`, `pdo_mysql`, `gd`, `intl`, `zip`, `curl` · FFmpeg 6.0+ · Apache 2.4+ with `mod_rewrite`
-
 ---
 
 ## 📁 Project Structure
@@ -227,7 +247,7 @@ MEeL/
 ├── tests/          # PHPUnit tests (source repo; not in the main ZIP)
 ├── tools/          # Toolchain + health check (tools/check_deploy.php)
 ├── video/          # Video player
-└── install.sh      📄 # One-command installer
+└── install.sh      # One-command installer
 ```
 
 ---
@@ -249,20 +269,13 @@ MEeL/
 | Arcade                | [ID](docs/id/arcade-optional.md) | [EN](docs/en/arcade-optional.md) |
 | Download              |     [ID](docs/id/download.md)     |     [EN](docs/en/download.md)     |
 
+Release history: [CHANGELOG-core.md](CHANGELOG-core.md) · [CHANGELOG-arcade.md](CHANGELOG-arcade.md).
+
 ---
 
 ## 🧪 Testing
 
-> Run `php vendor/bin/phpunit --list-tests` for current test counts. CI runs unit, integration, functional, and security suites.
->
-> The figures are deliberately rough ranges rather than exact numbers: the test count grows over time, so exact numbers go stale quickly. To measure them yourself:
->
-> ```bash
-> vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'    | tail -3
-> vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests'   | tail -3
-> php tests/functional_test.php                                          # summary in logs/
-> php tests/security_test.php                                            # summary in logs/
-> ```
+> The test count grows over time. Run the commands below for current figures; CI runs the unit, integration, functional, and security suites.
 
 ```bash
 composer install
@@ -288,7 +301,19 @@ php tools/check_deploy.php                                 # Deployment
 
 ## 🤝 Contributing
 
-Contributions in the form of bug reports, feature suggestions, or pull requests are welcome. Refer to the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md).
+Contributions in the form of bug reports, feature suggestions, or pull requests are welcome.
+
+1. Fork the repository and create a branch (`feat/feature-name` or `fix/bug-name`).
+2. Run `composer install`, then the relevant test suite.
+3. Open a pull request with a description of the change and verification steps.
+
+Refer to the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md).
+
+---
+
+## 🔐 Security
+
+If you discover a security vulnerability, please do not open a public issue. Report it privately to [mifada2543@gmail.com](mailto:mifada2543@gmail.com) so it can be addressed before disclosure.
 
 ---
 

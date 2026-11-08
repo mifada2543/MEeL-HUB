@@ -2,14 +2,12 @@
 require_once __DIR__ . '/modules/core/helpers.php';
 include __DIR__ . '/auth/config.php';
 require_once __DIR__ . '/controllers/system/UpdateManager.php';
-
+$og_image_url = (function_exists('detectProtocol') ? detectProtocol() : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . (function_exists('base_url') ? base_url('/assets/og-image.png') : '/assets/og-image.png');
 $um = new UpdateManager($conn);
 $um->handle();
-
 $flash = $um->getFlash();
 $sidebar_data = $um->getSidebarData();
 $updates = $um->getUpdates();
-
 $is_logged_in = isset($_SESSION['user_id']);
 $is_admin = $is_logged_in && is_admin($conn);
 ?>
@@ -40,7 +38,10 @@ $is_admin = $is_logged_in && is_admin($conn);
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
     <meta property="og:title" content="MEeL | Catatan Perubahan">
     <meta property="og:description" content="Catatan perubahan sistem MEeL. Lihat update terbaru dan riwayat versi platform.">
-    <meta property="og:image" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') ?>/assets/MEeL.png">
+    <meta property="og:image" content="<?= htmlspecialchars($og_image_url, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:image:alt" content="MEeL — Catatan Perubahan">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta property="og:url" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $_SERVER['REQUEST_URI'] ?>">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
@@ -60,7 +61,6 @@ $is_admin = $is_logged_in && is_admin($conn);
 <body>
 <?php include __DIR__ . '/partials/skip-link.php'; ?>
     <div class="wrap">
-
         <header class="masthead">
             <a href="./" class="masthead-logo" title="Beranda">
                 <img src="assets/MEeL.png" alt="MEeL">
@@ -75,7 +75,6 @@ $is_admin = $is_logged_in && is_admin($conn);
                 <div style="color:var(--orange)">Catatan Rilis</div>
             </div>
         </header>
-
         <?php if ($is_admin): ?>
             <div class="admin-bar">
                 <span class="admin-badge">
@@ -101,7 +100,6 @@ $is_admin = $is_logged_in && is_admin($conn);
             </div>
         <?php endif; ?>
         <div class="main-grid">
-
             <main>
                 <?php if ($flash): ?>
                     <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;margin-bottom:18px;font-size:12px;font-weight:600;
@@ -130,7 +128,6 @@ $is_admin = $is_logged_in && is_admin($conn);
                                 </div>
                                 <div style="display:flex;align-items:center;gap:1rem">
                                     <span class="entry-date"><?= date('d M Y', strtotime($row['created_at'])) ?></span>
-
                                     <?php if ($is_admin): ?>
                                         <div style="display:flex;align-items:center;gap:.5rem">
                                             <button onclick="openEditModal(<?= htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') ?>)" style="background:none;border:none;cursor:pointer;color:#60a5fa;" title="Edit Pembaruan">
@@ -157,7 +154,6 @@ $is_admin = $is_logged_in && is_admin($conn);
                     <div class="empty">Belum ada catatan pembaruan tersedia.</div>
                 <?php endif; ?>
             </main>
-
             <aside class="sidebar">
                 <div class="sidebar-card">
                     <div class="tab-nav">
@@ -178,7 +174,6 @@ $is_admin = $is_logged_in && is_admin($conn);
                             Pengumuman
                         </button>
                     </div>
-
                     <div id="pane-important" class="tab-pane active">
                         <div class="tab-pane-label" style="color:var(--orange)">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -203,7 +198,6 @@ $is_admin = $is_logged_in && is_admin($conn);
                         <?= isset($sidebar_data['announcement_content']) && $sidebar_data['announcement_content'] !== '' ? nl2br(htmlspecialchars((string) $sidebar_data['announcement_content'], ENT_QUOTES, 'UTF-8')) : '<span style="color:var(--muted);font-size:.75rem">Tidak ada pengumuman.</span>' ?>
                     </div>
                 </div>
-
                 <button class="check-btn" hx-get="api/check_update.php" hx-swap="outerHTML">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="23 4 23 10 17 10" />
@@ -214,7 +208,6 @@ $is_admin = $is_logged_in && is_admin($conn);
             </aside>
         </div>
     </div>
-
     <?php if ($is_admin): ?>
         <div id="modal-add-update" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-add-update')">
             <div class="modal-box">
@@ -244,7 +237,6 @@ $is_admin = $is_logged_in && is_admin($conn);
                 </form>
             </div>
         </div>
-
         <div id="modal-edit-update" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-edit-update')">
             <div class="modal-box">
                 <div class="modal-title">EDIT <span>PEMBARUAN</span></div>
@@ -273,7 +265,6 @@ $is_admin = $is_logged_in && is_admin($conn);
                 </form>
             </div>
         </div>
-
         <div id="modal-edit-sidebar" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-edit-sidebar')">
             <div class="modal-box">
                 <div class="modal-title">EDIT <span>SIDEBAR</span></div>
@@ -295,20 +286,16 @@ $is_admin = $is_logged_in && is_admin($conn);
                 </form>
             </div>
         </div>
-
     <?php endif; ?>
     <script>        lucide.createIcons();
-
         function openModal(id) {
             document.getElementById(id).classList.add('open');
             document.body.style.overflow = 'hidden';
         }
-
         function closeModal(id) {
             document.getElementById(id).classList.remove('open');
             document.body.style.overflow = '';
         }
-
         function handleBackdropClick(e, id) {
             if (e.target === document.getElementById(id)) closeModal(id);
         }
@@ -317,7 +304,6 @@ $is_admin = $is_logged_in && is_admin($conn);
                 document.querySelectorAll('.modal-backdrop.open').forEach(m => closeModal(m.id));
             }
         });
-
         function switchTab(t) {
             const panes = {
                 important: document.getElementById('pane-important'),
@@ -331,26 +317,21 @@ $is_admin = $is_logged_in && is_admin($conn);
             btns.important.className = 'tab-btn' + (t === 'important' ? ' active-orange' : '');
             btns.announcement.className = 'tab-btn' + (t === 'announcement' ? ' active-blue' : '');
         }
-
         function openEditModal(data) {
             const decodeHtml = (html) => {
                 const txt = document.createElement("textarea");
                 txt.innerHTML = html;
                 return txt.value;
             };
-
             document.getElementById('edit-id').value = data.id;
             document.getElementById('edit-version').value = decodeHtml(data.version);
             document.getElementById('edit-content').value = decodeHtml(data.content);
-
             if (data.created_at) {
                 const dateOnly = data.created_at.split(' ')[0];
                 document.getElementById('edit-created-at').value = dateOnly;
             }
-
             openModal('modal-edit-update');
         }
-
         if (typeof MEELTheme !== 'undefined') {
             MEELTheme.init({
                 isLoggedIn: <?= $is_logged_in ? 'true' : 'false' ?>,
