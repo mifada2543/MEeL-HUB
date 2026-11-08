@@ -150,10 +150,29 @@ if ('serviceWorker' in navigator) {
     });
 
     navigator.serviceWorker.addEventListener('controllerchange', function() {
-        if (sessionStorage.getItem('meel_pwa_update')) {
+        var meelSwTryReload = function() {
+            if (!sessionStorage.getItem('meel_pwa_update')) return;
+            var v = document.querySelector('video');
+            var playing = !!(v && !v.paused && !v.ended);
+            var mini = !!document.getElementById('mini-player-shell');
+            if (document.hidden || playing || mini) {
+                document.addEventListener('visibilitychange', function h() {
+                    var v2 = document.querySelector('video');
+                    if (!document.hidden && !(v2 && !v2.paused && !v2.ended) && !document.getElementById('mini-player-shell')) {
+                        document.removeEventListener('visibilitychange', h);
+                        meelSwTryReload();
+                    }
+                });
+                document.addEventListener('pause', function h2() {
+                    document.removeEventListener('pause', h2);
+                    meelSwTryReload();
+                }, true);
+                return;
+            }
             sessionStorage.removeItem('meel_pwa_update');
             window.location.reload();
-        }
+        };
+        meelSwTryReload();
     });
 }
 </script>

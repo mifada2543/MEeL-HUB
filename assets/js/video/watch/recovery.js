@@ -134,38 +134,58 @@ function checkMediaAndRecover() {
       clearTimeout(t);
       const n = e.headers.get("content-type") || "";
       if (e.ok && !n.includes("text/html")) {
-        (console.log("Media terdeteksi online! Memulai pemulihan via HTMX..."),
+        (console.log("Media terdeteksi online! Memulai pemulihan..."),
           (recoveryRetryCount = 0),
           (lastSuccessfulRecovery = Date.now()));
         const e = player ? player.currentTime : 0;
-        e > 0 && localStorage.setItem(storageKeyVideo, e);
-        window._videoReconnectOverlay && window._videoReconnectOverlay.hide(),
-          (isRecovering = !0),
-          (isAutoRecovering = !0),
-          window.htmx
-            ? htmx.ajax("GET", window.location.href, {
-                target: "#main-video-wrapper",
-                select: "#main-video-wrapper",
-                swap: "outerHTML",
-              })
-            : window.location.reload(),
-          (isCheckingStatus = !1);
+        (e > 0 && localStorage.setItem(storageKeyVideo, e),
+          window._videoReconnectOverlay && window._videoReconnectOverlay.hide(),
+          (isCheckingStatus = !1));
+        if (typeof isMiniPlayerActive !== "undefined" && isMiniPlayerActive) {
+          try {
+            hls && hls.startLoad(Math.max(0, (player ? player.currentTime : 0) - 1));
+          } catch (err) {}
+          try {
+            if (player && player.paused && !player.ended) {
+              const p = player.play();
+              p && p.catch && p.catch(function () {});
+            }
+          } catch (err) {}
+        } else {
+          ((isRecovering = !0),
+            (isAutoRecovering = !0),
+            window.htmx
+              ? htmx.ajax("GET", window.__meelWatchUrl || window.location.href, {
+                  target: "#main-video-wrapper",
+                  select: "#main-video-wrapper",
+                  swap: "outerHTML",
+                })
+              : window.location.reload());
+        }
       } else
         (console.log(
-          "Media masih offline (kembalian server bukan file media). Menguji ulang dalam 3 detik...",
+          "Media masih offline (kembalian server bukan file media). Menguji ulang...",
         ),
           setTimeout(() => {
+            if (document.hidden) {
+              isCheckingStatus = !1;
+              return;
+            }
             ((isCheckingStatus = !1), checkMediaAndRecover());
-          }, 3e3));
+          }, Math.min(3e3 * (recoveryRetryCount + 1), 15e3)));
     })
     .catch((e) => {
       (clearTimeout(t),
         console.log(
-          "Koneksi media gagal/offline atau timeout. Menguji ulang dalam 3 detik...",
+          "Koneksi media gagal/offline atau timeout. Menguji ulang...",
         ),
         setTimeout(() => {
+          if (document.hidden) {
+            isCheckingStatus = !1;
+            return;
+          }
           ((isCheckingStatus = !1), checkMediaAndRecover());
-        }, 3e3));
+        }, Math.min(3e3 * (recoveryRetryCount + 1), 15e3)));
     });
 }
 function triggerPlayerRecovery() {
@@ -250,12 +270,33 @@ function registerVideoErrorListener(videoEl) {
     startWaitingTimeout();
   });
 }
+function softResumePlayer() {
+  try {
+    if (hls) hls.startLoad(Math.max(0, (player ? player.currentTime : 0) - 1));
+    if (player && player.paused && !player.ended) {
+      const p = player.play();
+      p && p.catch && p.catch(function () {});
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
 function startWaitingTimeout() {
   if (!window._videoWaitingTimeout) {
     window._videoWaitingTimeout = meelCreateWaitingTimeout({
       timeout: 10000,
       onTimeout: function () {
-        console.warn("Video menunggu data terlalu lama (>10 detik), trigger recovery");
+        console.warn("Video menunggu data terlalu lama (>10 detik)");
+        if (softResumePlayer()) {
+          setTimeout(function () {
+            if (player && !player.ended && player.readyState < 2) {
+              console.warn("Soft-resume gagal pulih, lanjut recovery penuh.");
+              triggerPlayerRecovery();
+            }
+          }, 5000);
+          return;
+        }
         triggerPlayerRecovery();
       },
     });
