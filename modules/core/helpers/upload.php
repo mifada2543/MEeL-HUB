@@ -138,7 +138,7 @@ if (!function_exists('meel_validate_video_codec')) {
         if ($ret !== 0 || empty($output)) {
             return 'Gagal membaca codec video. Pastikan ffprobe terinstall.';
         }
-        $codec = strtolower(trim($output[0]));
+        $codec = strtolower(trim((string)($output[0] ?? '')));
         if (!in_array($codec, $allowed_codecs, true)) {
             return "Codec video \"{$codec}\" tidak didukung. Hanya codec H.264 (AVC) dan H.265 (HEVC) yang diizinkan.";
         }
@@ -169,10 +169,10 @@ if (!function_exists('meel_validate_audio_codec')) {
         $output = [];
         $ret = -1;
         @exec($cmd, $output, $ret);
-        if ($ret !== 0 || empty($output) || trim($output[0]) === '') {
+        if ($ret !== 0 || empty($output) || trim((string)($output[0] ?? '')) === '') {
             return ['error' => '', 'has_audio' => false, 'needs_audio_transcode' => false];
         }
-        $parts = array_map('trim', explode(',', $output[0]));
+        $parts = array_map('trim', explode(',', (string)($output[0] ?? '')));
         $codec = strtolower($parts[0] ?? '');
         $duration = (float)($parts[1] ?? 0);
         if (in_array($codec, $allowed_codecs, true)) {
