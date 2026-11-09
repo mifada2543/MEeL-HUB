@@ -16,7 +16,6 @@ class QueueRefundRecoveryIntegrationTest extends TestCase
     private int $uid;
     private int $queueId;
     private const COST = 7;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -33,13 +32,13 @@ class QueueRefundRecoveryIntegrationTest extends TestCase
         $this->uid = (int)$this->conn->insert_id;
         $this->conn->query(
             "INSERT INTO upload_queue
-               (url, media_type, user_id, status, coin_cost, coin_refunded, created_at)
+               (url, media_type, user_id, status, coin_cost, coin_refunded, created_at, updated_at)
              VALUES ('http://refund-recovery', 'video', {$this->uid}, 'processing',
-                     " . self::COST . ", 0, DATE_SUB(NOW(), INTERVAL 45 MINUTE))"
+                     " . self::COST . ", 0, DATE_SUB(NOW(), INTERVAL 45 MINUTE),
+                     DATE_SUB(NOW(), INTERVAL 45 MINUTE))"
         );
         $this->queueId = (int)$this->conn->insert_id;
     }
-
     protected function tearDown(): void
     {
         $this->conn->query("DELETE FROM upload_queue WHERE id = {$this->queueId}");
@@ -47,13 +46,11 @@ class QueueRefundRecoveryIntegrationTest extends TestCase
         $this->dbHelper->close();
         parent::tearDown();
     }
-
     private function balance(): int
     {
         $row = $this->conn->query("SELECT meelcoin FROM users WHERE id = {$this->uid}")->fetch_assoc();
         return (int)$row['meelcoin'];
     }
-
     private function queueState(): array
     {
         $row = $this->conn->query(
@@ -65,17 +62,13 @@ class QueueRefundRecoveryIntegrationTest extends TestCase
             'coin_refunded' => (int)$row['coin_refunded'],
         ];
     }
-
     public function testStaleRowIsRefundedAndMarkedFailed(): void
     {
         $this->assertSame(0, $this->balance(), 'Harus mulai dari saldo 0');
-
         $res = GarbageCollector::releaseStaleQueueRows($this->conn, 30, ['upload_queue']);
-
         $this->assertSame(1, $res['scanned'], 'Baris macet harus terdeteksi');
         $this->assertSame(1, $res['refunded'], 'Baris harus direfund');
         $this->assertSame(1, $res['failed'], 'Baris harus ditandai failed');
-
         $state = $this->queueState();
         $this->assertSame('failed', $state['status']);
         $this->assertSame(1, $state['coin_refunded']);
@@ -85,44 +78,35 @@ class QueueRefundRecoveryIntegrationTest extends TestCase
             'Saldo harus bertambah tepat sebesar biaya yang tercatat di baris'
         );
     }
-
     public function testSecondRunDoesNotRefundTwice(): void
     {
         GarbageCollector::releaseStaleQueueRows($this->conn, 30, ['upload_queue']);
         $afterFirst = $this->balance();
         $this->assertSame(self::COST, $afterFirst);
-
         for ($i = 0; $i < 3; $i++) {
             $res = GarbageCollector::releaseStaleQueueRows($this->conn, 30, ['upload_queue']);
             $this->assertSame(0, $res['refunded'], "Run tambahan #{$i} tidak boleh refund lagi");
         }
-
         $this->assertSame(
             $afterFirst,
             $this->balance(),
             'Saldo TIDAK boleh bertambah lagi — refund ganda berarti user dapat uang gratis'
         );
     }
-
     public function testFreshRowIsNotTouched(): void
     {
         $this->conn->query(
-            "UPDATE upload_queue SET created_at = NOW() WHERE id = {$this->queueId}"
+            "UPDATE upload_queue SET created_at = NOW(), updated_at = NOW() WHERE id = {$this->queueId}"
         );
-
         $res = GarbageCollector::releaseStaleQueueRows($this->conn, 30, ['upload_queue']);
-
         $this->assertSame(0, $res['scanned'], 'Baris yang masih baru tidak boleh diambil');
         $this->assertSame(0, $this->balance(), 'Baris baru tidak boleh direfund');
         $this->assertSame('processing', $this->queueState()['status']);
     }
-
     public function testRowWithZeroCostIsStillMarkedFailed(): void
     {
         $this->conn->query("UPDATE upload_queue SET coin_cost = 0 WHERE id = {$this->queueId}");
-
         $res = GarbageCollector::releaseStaleQueueRows($this->conn, 30, ['upload_queue']);
-
         $this->assertSame(1, $res['scanned']);
         $this->assertSame(0, $res['refunded'], 'Tidak ada biaya untuk direfund');
         $this->assertSame(1, $res['failed'], 'Baris tetap harus ditandai failed');
@@ -130,5 +114,4 @@ class QueueRefundRecoveryIntegrationTest extends TestCase
         $this->assertSame(0, $this->balance());
     }
 }
-
 /* reference build: MEeL-C8H12N4P [queue-refund-recovery-t8] */

@@ -5,6 +5,33 @@
     <testsuite name="MEeL Core Unit Tests">
       <directory>tests/unit</directory>
     </testsuite>
+    <testsuite name="MEeL Unit Auth">
+      <directory>tests/unit/auth</directory>
+    </testsuite>
+    <testsuite name="MEeL Unit Security Http">
+      <directory>tests/unit/security-http</directory>
+    </testsuite>
+    <testsuite name="MEeL Unit Media">
+      <directory>tests/unit/media</directory>
+    </testsuite>
+    <testsuite name="MEeL Unit Upload Queue">
+      <directory>tests/unit/upload-queue</directory>
+    </testsuite>
+    <testsuite name="MEeL Unit Transcoder">
+      <directory>tests/unit/transcoder</directory>
+    </testsuite>
+    <testsuite name="MEeL Unit Storage Drive">
+      <directory>tests/unit/storage-drive</directory>
+    </testsuite>
+    <testsuite name="MEeL Unit Data Db">
+      <directory>tests/unit/data-db</directory>
+    </testsuite>
+    <testsuite name="MEeL Unit Web Ui">
+      <directory>tests/unit/web-ui</directory>
+    </testsuite>
+    <testsuite name="MEeL Unit Core Meta">
+      <directory>tests/unit/core-meta</directory>
+    </testsuite>
     <testsuite name="MEeL Integration Tests">
       <directory>tests/integration</directory>
     </testsuite>

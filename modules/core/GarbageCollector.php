@@ -8,6 +8,7 @@ class GarbageCollector
     private const ROOM_GAME_STALE_HOURS = 168;
     private const CHESS_CLEANUP_INTERVAL = 3600;
     public const QUEUE_STUCK_MINUTES = 360;
+    public const STALE_QUEUE_SWEEP_INTERVAL = 60;
     private const CACHE_TTL_MAP = [
         'media_stats_'       => 30,
         'admin_orphans'      => 120,
@@ -30,10 +31,7 @@ class GarbageCollector
         self::sweepStuckQueues($conn);
         self::sweepUploadAccounting($conn);
     }
-
     /**
-     * Bersihkan sesi upload basi dan reservasi coin yang tidak pernah selesai.
-     *
      * @return array{attempts_failed:int,attempts_completed:int,holds_released:int}
      */
     public static function sweepUploadAccounting(\mysqli $conn): array
@@ -48,6 +46,28 @@ class GarbageCollector
             $out['holds_released'] = MeelCoin::releaseExpiredHolds($conn);
         }
         return $out;
+    }
+    /**
+     * @param string[] $tables
+     * @return array{scanned:int, failed:int, refunded:int, completed:int}|null null bila di-skip karena throttle
+     */
+    public static function releaseStaleQueueRowsThrottled(
+        \mysqli $conn,
+        int $staleMinutes,
+        array $tables = ['upload_queue'],
+        int $intervalSeconds = self::STALE_QUEUE_SWEEP_INTERVAL,
+        ?string $throttleFile = null
+    ): ?array {
+        $file = $throttleFile
+            ?? (defined('MEEL_QUEUE_SWEEP_THROTTLE')
+                ? (string) MEEL_QUEUE_SWEEP_THROTTLE
+                : dirname(__DIR__, 2) . '/temp/queue_sweep_last_run.txt');
+        if (self::isWithinThrottle($file, $intervalSeconds)) {
+            return null;
+        }
+        $result = self::releaseStaleQueueRows($conn, $staleMinutes, $tables);
+        self::writeThrottleFile($file);
+        return $result;
     }
     /** @return array{scanned:int, failed:int, refunded:int, completed:int}  */
     public static function sweepStuckQueues(\mysqli $conn, ?int $staleMinutes = null): array
@@ -70,13 +90,6 @@ class GarbageCollector
 
     /**
      * Lepaskan baris antrean yang macet: refund biaya yang tercatat, lalu tandai failed.
-     *
-     * Dipakai oleh sweeper 6 jam (`sweepStuckQueues()`) dan pembersih 30
-     * menit di `upload_advanced.php`. Refund harus lebih dulu, baru status
-     * diubah — kalau dibalik, baris `failed` tidak lagi dipilih sweeper
-     * sementara coins belum kembali. `coin_cost` dibaca dari baris itu
-     * sendiri, bukan dari harga saat ini.
-     *
      * @param array<int, string> $tables tabel antrean yang dipindai
      * @return array{scanned:int, failed:int, refunded:int, completed:int}
      * @see docs/{id,en}/security.md
@@ -100,15 +113,12 @@ class GarbageCollector
                     $result['refunded']++;
                 }
                 if ($settle === 2) {
-                    // Hold sudah captured: media sah, jangan tandai gagal.
                     if (self::markQueueRowCompleted($conn, $table, $id)) {
                         $result['completed']++;
                     }
                     continue;
                 }
                 if ($settle < 0) {
-                    // Refund/release gagal. Jangan tandai failed: baris failed
-                    // tidak dipindai lagi dan biaya legacy bisa hilang permanen.
                     error_log(
                         '[MEeL] GarbageCollector: baris ' . $table . ' #' . $id
                         . ' belum terselesaikan; status dibiarkan agar sweeper berikutnya mencoba lagi.'
@@ -129,11 +139,12 @@ class GarbageCollector
      */
     private static function fetchStaleQueueRows(\mysqli $conn, string $table, int $staleMinutes): array
     {
+        $timeCol = $table === 'upload_queue' ? 'updated_at' : 'created_at';
         $stmt = $conn->prepare(
             "SELECT id, user_id, coin_cost, " . ($table === 'upload_queue' ? 'hold_id' : 'NULL AS hold_id') . " FROM {$table}
              WHERE status IN ('pending', 'processing')
                AND coin_refunded = 0
-               AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+               AND {$timeCol} < DATE_SUB(NOW(), INTERVAL ? MINUTE)"
         );
         if (!$stmt) {
             return [];
@@ -147,15 +158,6 @@ class GarbageCollector
     }
 
     /**
-     * Selesaikan satu baris antrean yang macet.
-     *
-     * `SELECT ... FOR UPDATE` menahan baris itu selama transaksi, jadi dua
-     * sweeper yang jalan bersamaan tidak bisa keduanya merefund baris yang
-     * sama. Untuk baris ber-hold, hold dilepas tanpa memotong saldo; kalau
-     * hold sudah captured, baris ditandai completed (media sudah sah).
-     * Untuk baris legacy tanpa hold, refund memakai `coin_cost` yang benar-
-     * benar tercatat saat baris dibuat.
-     *
      * @return int 0=tidak ada perubahan, 1=refund/release, 2=hold captured,
      *             -1=penyelesaian gagal (baris harus dibiarkan untuk sweep berikutnya)
      */
@@ -178,7 +180,6 @@ class GarbageCollector
             );
             return 0;
         }
-
         $conn->begin_transaction();
         try {
             $rowLock = self::lockQueueRow($conn, $table, $id);
@@ -186,7 +187,6 @@ class GarbageCollector
                 $conn->rollback();
                 return 0;
             }
-
             if ($holdId > 0) {
                 $hold = MeelCoin::getHold($conn, $holdId);
                 if ($hold !== null && (string)$hold['status'] === 'captured') {
@@ -202,7 +202,6 @@ class GarbageCollector
                     $conn->rollback();
                     return 2;
                 }
-                // Hold yang dilepas tidak pernah memotong saldo total.
                 if (!self::markQueueRowRefunded($conn, $table, $id)) {
                     $conn->rollback();
                     return -1;
@@ -210,12 +209,10 @@ class GarbageCollector
                 $conn->commit();
                 return $release['released'] > 0 ? 1 : 0;
             }
-
             if ($cost <= 0) {
                 $conn->rollback();
                 return 0;
             }
-
             if (!MeelCoin::refund($conn, $userId, $cost, 'upload_failed_refund')) {
                 $conn->rollback();
                 return -1;
@@ -225,7 +222,6 @@ class GarbageCollector
                 $conn->rollback();
                 return -1;
             }
-
             $conn->commit();
             return 1;
         } catch (\Throwable $e) {
@@ -237,12 +233,6 @@ class GarbageCollector
             return -1;
         }
     }
-
-    /**
-     * Kunci baris antrean dan baca penanda refund-nya.
-     *
-     * Mengembalikan null kalau barisnya tidak ada atau statement-nya gagal.
-     */
     private static function lockQueueRow(\mysqli $conn, string $table, int $id): ?array
     {
         $holdExpr = $table === 'upload_queue' ? 'hold_id' : 'NULL AS hold_id';
@@ -258,10 +248,6 @@ class GarbageCollector
         $lock->close();
         return $row;
     }
-
-    /**
-     * Tandai baris antrean sebagai sudah direfund.
-     */
     private static function markQueueRowRefunded(\mysqli $conn, string $table, int $id): bool
     {
         $mark = $conn->prepare(
@@ -275,17 +261,14 @@ class GarbageCollector
         $mark->close();
         return $ok;
     }
-
     private static function markQueueRowFailed(\mysqli $conn, string $table, int $id): bool
     {
         return self::markQueueRowStatus($conn, $table, $id, 'failed');
     }
-
     private static function markQueueRowCompleted(\mysqli $conn, string $table, int $id): bool
     {
         return self::markQueueRowStatus($conn, $table, $id, 'completed');
     }
-
     private static function markQueueRowStatus(\mysqli $conn, string $table, int $id, string $status): bool
     {
         if (!in_array($status, ['completed', 'failed'], true)) {
@@ -434,15 +417,6 @@ class GarbageCollector
         self::cleanEmptyCacheDirs($cacheDir);
         return $deleted;
     }
-
-    /**
-     * Apakah satu berkas cache sudah kadaluarsa dan boleh dihapus.
-     *
-     * Tiga kelompok berkas, urut dari yang paling spesifik:
-     *  - berkas sementara (`*.tmp.<unix>.<hash>`) — dibuang setelah 5 menit
-     *  - berkas dengan prefix yang dikenal — kadaluarsa menurut isinya
-     *  - berkas lain — dibuang setelah 1 hari
-     */
     private static function deleteCacheItemIfExpired(string $item, int $now): bool
     {
         $base = basename($item);
@@ -456,10 +430,8 @@ class GarbageCollector
                 return self::deleteCacheItemIfStale($item, $ttl);
             }
         }
-
         return self::deleteCacheItemOlderThan($item, self::CACHE_ORPHAN_TTL, $now);
     }
-
     private static function deleteCacheItemOlderThan(string $item, int $seconds, int $now): bool
     {
         $mtime = @filemtime($item);
@@ -468,7 +440,6 @@ class GarbageCollector
         }
         return is_file($item) && @unlink($item);
     }
-
     private static function deleteCacheItemIfStale(string $item, int $ttl): bool
     {
         if (!self::isCacheExpired($item, $ttl)) {
@@ -477,14 +448,6 @@ class GarbageCollector
         return is_file($item) && @unlink($item);
     }
     /**
-     * Apakah satu berkas cache sudah melewati TTL-nya.
-     *
-     * Tiap keluarga cache memakai key waktu yang berbeda: `media_stats_`
-     * dan `server_stats_info` memakai `ts`, `dirsize_` dan
-     * `xsendfile_roots` memakai `time`, `admin_orphans` memakai
-     * `checked_at`. Karena itu key-nya dicari berurutan, bukan satu nama
-     * tetap. Berkas tanpa key waktu apa pun jatuh ke mtime.
-     *
      * @see docs/{id,en}/modules.md
      */
     private static function isCacheExpired(string $path, int $ttl): bool
@@ -631,7 +594,7 @@ class GarbageCollector
         foreach ($items as $item) {
             $basename = basename($item);
             if ($basename === 'ytdlp-cache') continue;
-            if (in_array($basename, ['cache', 'ratelimit'], true)) continue;
+            if (in_array($basename, ['cache', 'ratelimit', 'ytmeta'], true)) continue;
             if (!file_exists($item)) continue;
             $mtime = filemtime($item);
             if ($mtime === false || $mtime > $cutoff) continue;

@@ -7,6 +7,16 @@ class DownloadService extends TranscoderBase
     private int $currentHoldId = 0;
     private int $currentAttemptId = 0;
     private int $lastQueueId = 0;
+    private const METADATA_TIMEOUT = 120;
+    private const METADATA_CACHE_TTL = 600;
+    private const METADATA_CACHE_MAX_BYTES = 65536;
+    private static function singlePassEnabled(): bool
+    {
+        if (defined('MEEL_SINGLE_PASS_DOWNLOAD') && MEEL_SINGLE_PASS_DOWNLOAD) {
+            return true;
+        }
+        return getenv('MEEL_SINGLE_PASS_DOWNLOAD') === '1';
+    }
     private function lockQueue(string $url, string $type): int
     {
         $holdId = self::$pendingHoldId > 0 ? self::$pendingHoldId : 0;
@@ -87,6 +97,20 @@ class DownloadService extends TranscoderBase
         if ($this->currentHoldId > 0) {
             MeelCoin::touchHold($this->conn, $this->currentHoldId, $this->currentAttemptId > 0 ? $this->currentAttemptId : null);
         }
+        $this->heartbeatQueue();
+    }
+    private function heartbeatQueue(): void
+    {
+        if ($this->lastQueueId <= 0) {
+            return;
+        }
+        $stmt = $this->conn->prepare('UPDATE upload_queue SET updated_at = NOW() WHERE id = ?');
+        if (!$stmt) {
+            return;
+        }
+        $stmt->bind_param('i', $this->lastQueueId);
+        $stmt->execute();
+        $stmt->close();
     }
     private function ensureDownloadProxy(): string
     {
@@ -106,7 +130,17 @@ class DownloadService extends TranscoderBase
         }
         $proxyArgs = str_contains($extraArgs, '--proxy') ? '' : $this->ensureDownloadProxy();
         $cmd = $this->requireYtdlp() . $proxyArgs . $extraArgs . "--skip-download --print-json " . escapeshellarg($url) . " 2>&1";
-        exec($cmd, $output_array, $return_var);
+        exec('timeout ' . self::METADATA_TIMEOUT . ' sh -c ' . escapeshellarg($cmd), $output_array, $return_var);
+        if ($return_var === 124) {
+            throw new DownloadException(
+                sprintf(
+                    'yt-dlp tidak merespons dalam %d detik saat mengambil metadata. Coba lagi atau pakai URL lain.',
+                    self::METADATA_TIMEOUT
+                ),
+                $url,
+                'metadata'
+            );
+        }
         $output = implode("\n", $output_array);
         $start = strpos($output, '{');
         $end = strrpos($output, '}');
@@ -182,6 +216,17 @@ class DownloadService extends TranscoderBase
         [$dl_url, $dl_extra] = $this->prepareDownloadTarget($url);
         $this->assertDownloadDiskSpace();
         $queue_id = $this->lockQueue($url, $type);
+        if (self::singlePassEnabled()) {
+            try {
+                return $this->processDownloadSinglePass($queue_id, $type, $url, $dl_url, $dl_extra);
+            } catch (\Throwable $e) {
+                try {
+                    $this->failQueue($queue_id);
+                } catch (\Throwable $ignore) {
+                }
+                throw $e;
+            }
+        }
         try {
             $meta = $this->fetchAndValidateMetadata($dl_url, $dl_extra, $url);
         } catch (Throwable $e) {
@@ -201,7 +246,7 @@ class DownloadService extends TranscoderBase
             }
             if ($outcome['status'] !== 'ok') {
                 $this->failQueue($queue_id);
-                file_put_contents('/tmp/ytdlp_error.log', $outcome['error_log']);
+                error_log('[MEeL] DownloadService download gagal: ' . substr((string) $outcome['error_log'], -2000));
                 $this->emit('error', ['message' => $outcome['message']]);
                 return $outcome['disconnected'] ? "DISCONNECTED" : "";
             }
@@ -225,7 +270,9 @@ class DownloadService extends TranscoderBase
                     $track['title'],
                     $track['duration'],
                     $track['description'],
-                    $queue_id
+                    $queue_id,
+                    $track['artist'],
+                    $track['album']
                 );
                 $finalized_ok = str_starts_with($result, 'DONE:');
                 if ($finalized_ok) {
@@ -280,13 +327,67 @@ class DownloadService extends TranscoderBase
     }
     private function fetchAndValidateMetadata(string $dl_url, string $dl_extra, string $url): array
     {
+        $cached = $this->readCachedMetadata($url);
+        if ($cached !== null) {
+            $this->assertWithinDownloadLimits($cached, $url);
+            return $cached;
+        }
         $meta = $this->fetchMetadata($dl_url, $dl_extra);
         if (!$meta) {
             throw new DownloadException("Gagal ambil metadata dari yt-dlp.", $url, 'metadata');
         }
         $this->assertWithinDownloadLimits($meta, $url);
-
+        $this->writeCachedMetadata($url, $meta);
         return $meta;
+    }
+    private function metadataCacheDir(): string
+    {
+        if (defined('MEEL_METADATA_CACHE_DIR') && MEEL_METADATA_CACHE_DIR !== '') {
+            return rtrim((string) MEEL_METADATA_CACHE_DIR, '/\\');
+        }
+        return dirname(__DIR__, 2) . '/temp/ytmeta';
+    }
+    private function metadataCacheFile(string $url): string
+    {
+        return $this->metadataCacheDir() . '/' . sha1(strtolower(trim($url))) . '.json';
+    }
+    private function readCachedMetadata(string $url): ?array
+    {
+        $file = $this->metadataCacheFile($url);
+        if (!is_file($file)) {
+            return null;
+        }
+        $mtime = @filemtime($file);
+        if ($mtime === false || $mtime < time() - self::METADATA_CACHE_TTL) {
+            @unlink($file);
+            return null;
+        }
+        $raw = @file_get_contents($file, false, null, 0, self::METADATA_CACHE_MAX_BYTES);
+        if (!is_string($raw) || $raw === '') {
+            return null;
+        }
+        $data = json_decode($raw, true);
+        return is_array($data) && $data !== [] ? $data : null;
+    }
+    private function writeCachedMetadata(string $url, array $meta): void
+    {
+        $json = json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (!is_string($json) || $json === '' || strlen($json) > self::METADATA_CACHE_MAX_BYTES) {
+            return;
+        }
+        $dir = $this->metadataCacheDir();
+        if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
+            return;
+        }
+        $file = $this->metadataCacheFile($url);
+        $tmp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
+        if (@file_put_contents($tmp, $json) !== strlen($json)) {
+            @unlink($tmp);
+            return;
+        }
+        if (!@rename($tmp, $file)) {
+            @unlink($tmp);
+        }
     }
     private function resolveTrackMetadata(array $meta): array
     {
@@ -303,17 +404,24 @@ class DownloadService extends TranscoderBase
             'description' => !empty($meta['description']) ? $meta['description'] : 'Upload by MEeL Engine',
         ];
     }
-    private function buildDownloadContext(string $type, array $track, string $url, string $dl_url, string $dl_extra): array
-    {
-        $clean = getRomajiName($track['title']);
+    private function buildDownloadContext(
+        string $type,
+        array $track,
+        string $url,
+        string $dl_url,
+        string $dl_extra,
+        bool $single_pass = false
+    ): array {
         $ctx = [
             'type' => $type,
             'shm_temp' => null,
             'temp_id' => null,
             'staging_dir' => null,
             'basename' => null,
+            'download_stem' => null,
             'cmd' => '',
         ];
+        $info_args = $single_pass ? ' --write-info-json' : '';
         if ($type === 'music') {
             $ctx['shm_temp'] = $this->getShmTempPath();
             $ctx['temp_id'] = "raw_" . time() . "_" . substr(md5(uniqid('', true)), 0, 4);
@@ -321,12 +429,19 @@ class DownloadService extends TranscoderBase
             $ctx['cmd'] = $this->requireYtdlp() . $dl_extra
                 . "-f bestaudio -o " . escapeshellarg($temp_path)
                 . " --write-thumbnail --embed-thumbnail"
+                . $info_args
                 . " --newline " . escapeshellarg($dl_url) . " 2>&1";
 
             return $ctx;
         }
         $ctx['staging_dir'] = $this->getShmTempPath() . '/';
-        $ctx['basename'] = $clean;
+        if ($single_pass) {
+            $ctx['download_stem'] = "raw_" . time() . "_" . substr(md5(uniqid('', true)), 0, 4);
+            $ctx['basename'] = $ctx['download_stem'];
+        } else {
+            $clean = getRomajiName($track['title']);
+            $ctx['basename'] = $clean;
+        }
         if (file_exists($ctx['staging_dir'] . $ctx['basename'] . ".mp4")) {
             $ctx['basename'] .= "-" . substr(md5(uniqid('', true)), -4);
         }
@@ -335,10 +450,118 @@ class DownloadService extends TranscoderBase
         $ctx['cmd'] = $this->requireYtdlp() . $dl_extra
             . "-f " . escapeshellarg($format)
             . " --merge-output-format mp4 -o " . escapeshellarg($output_tpl)
-            . " --write-thumbnail --newline "
+            . " --write-thumbnail" . $info_args . " --newline "
             . escapeshellarg($dl_url) . " 2>&1";
-
         return $ctx;
+    }
+    private function readDownloadInfoJson(array $ctx): ?array
+    {
+        $stem = $ctx['download_stem'] ?? $ctx['temp_id'] ?? null;
+        if ($stem === null || $stem === '') {
+            return null;
+        }
+        $dir = $ctx['staging_dir'] ?? $ctx['shm_temp'] ?? null;
+        if ($dir === null || $dir === '') {
+            return null;
+        }
+        $files = glob(rtrim((string) $dir, '/') . '/' . $stem . '.info.json') ?: [];
+        if (empty($files)) {
+            return null;
+        }
+        $raw = @file_get_contents($files[0], false, null, 0, self::METADATA_CACHE_MAX_BYTES * 4);
+        if (!is_string($raw) || $raw === '') {
+            return null;
+        }
+        $data = json_decode($raw, true);
+        return is_array($data) && $data !== [] ? $data : null;
+    }
+    private function promoteStagedArtifacts(array $ctx, array $track): string
+    {
+        $dir = rtrim((string) $ctx['staging_dir'], '/');
+        $stem = (string) ($ctx['download_stem'] ?? '');
+        $basename = getRomajiName((string) $track['title']);
+        if ($basename === '') {
+            $basename = 'video';
+        }
+        if ($stem === '' || $stem === $basename) {
+            return $basename;
+        }
+        if (file_exists($dir . '/' . $basename . '.mp4')) {
+            $basename .= '-' . substr(md5(uniqid('', true)), -4);
+        }
+        foreach (glob($dir . '/' . $stem . '.*') ?: [] as $file) {
+            $ext = strtolower((string) pathinfo($file, PATHINFO_EXTENSION));
+            if ($ext === 'json') {
+                @unlink($file);
+                continue;
+            }
+            if (!@rename($file, $dir . '/' . $basename . '.' . $ext)) {
+                @unlink($file);
+            }
+        }
+        return $basename;
+    }
+    private function processDownloadSinglePass(
+        int $queue_id,
+        string $type,
+        string $url,
+        string $dl_url,
+        string $dl_extra
+    ): string {
+        $ctx = $this->buildDownloadContext($type, ['title' => ''], $url, $dl_url, $dl_extra, true);
+        $this->touchAccounting('downloading');
+        $this->emit('download_start', ['url' => $url]);
+        $outcome = $this->runDownloadProcess($ctx, $queue_id);
+        if ($outcome['status'] === 'spawn_failed') {
+            $this->failQueue($queue_id);
+            $this->emit('error', ['message' => 'Gagal menjalankan yt-dlp. Cek permission atau install yt-dlp.']);
+            return '';
+        }
+        if ($outcome['status'] !== 'ok') {
+            $this->failQueue($queue_id);
+            error_log('[MEeL] DownloadService single-pass gagal: ' . substr((string) $outcome['error_log'], -2000));
+            $this->emit('error', ['message' => $outcome['message']]);
+            return $outcome['disconnected'] ? 'DISCONNECTED' : '';
+        }
+        $meta = $this->readDownloadInfoJson($ctx);
+        if ($meta === null) {
+            error_log('[MEeL] DownloadService: .info.json tidak ada, fallback metadata-only');
+            $meta = $this->fetchAndValidateMetadata($dl_url, $dl_extra, $url);
+        } else {
+            $this->assertWithinDownloadLimits($meta, $url);
+        }
+        $track = $this->resolveTrackMetadata($meta);
+        if ($type === 'music') {
+            $result = $this->finalizeMusic(
+                $ctx['temp_id'],
+                $track['title'],
+                $track['artist'],
+                $track['album'],
+                $track['duration'],
+                $track['description']
+            );
+            if (!str_starts_with($result, 'ENCODE_MUSIC:')) {
+                $this->failQueue($queue_id);
+            }
+            return $result;
+        }
+        $ctx['basename'] = $this->promoteStagedArtifacts($ctx, $track);
+        $result = $this->finalizeVideo(
+            $ctx['basename'],
+            $ctx['basename'] . '.webp',
+            $track['title'],
+            $track['duration'],
+            $track['description'],
+            $queue_id,
+            $track['artist'],
+            $track['album']
+        );
+        if (str_starts_with($result, 'DONE:')) {
+            $this->releaseQueue($queue_id, 'completed');
+        } else {
+            $this->failQueue($queue_id);
+        }
+        return $result;
     }
     private function runDownloadProcess(array $ctx, int $queue_id): array
     {
@@ -354,10 +577,10 @@ class DownloadService extends TranscoderBase
         if (!is_resource($dl_proc)) {
             return ['status' => 'spawn_failed', 'error_log' => '', 'message' => '', 'disconnected' => false];
         }
-        if (is_resource($dl_pipes[0])) {
+        if (isset($dl_pipes[0]) && is_resource($dl_pipes[0])) {
             fclose($dl_pipes[0]);
         }
-        if (is_resource($dl_pipes[2])) {
+        if (isset($dl_pipes[2]) && is_resource($dl_pipes[2])) {
             fclose($dl_pipes[2]);
         }
         $dl_status = proc_get_status($dl_proc);
@@ -421,7 +644,6 @@ class DownloadService extends TranscoderBase
         if ($this->stagedArtifactsExist($ctx)) {
             return ['status' => 'ok', 'error_log' => $error_log, 'message' => '', 'disconnected' => $client_disconnected];
         }
-
         return [
             'status' => 'download_failed',
             'error_log' => $error_log,
@@ -429,7 +651,6 @@ class DownloadService extends TranscoderBase
             'disconnected' => $client_disconnected,
         ];
     }
-
     private function reportDownloadProgress(string $line): void
     {
         if (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+([\d.]+\s*\S+)\s+at\s+([\d.]+\s*\S+\/s)(?:\s+ETA\s+([\d:]+))?(?:\s+\(frag\s+(\d+)\/(\d+)\))?/', $line, $m)) {
@@ -465,9 +686,15 @@ class DownloadService extends TranscoderBase
     private function stagedArtifactsExist(array $ctx): bool
     {
         if ($ctx['type'] === 'music') {
-            return !empty(glob($ctx['shm_temp'] . "/" . $ctx['temp_id'] . ".*"));
+            foreach (glob($ctx['shm_temp'] . "/" . $ctx['temp_id'] . ".*") ?: [] as $file) {
+                if (strtolower((string) pathinfo($file, PATHINFO_EXTENSION)) !== 'json') {
+                    return true;
+                }
+            }
+            return false;
         }
-        $expected = $ctx['staging_dir'] . $ctx['basename'] . ".mp4";
+        $stem = $ctx['download_stem'] ?? $ctx['basename'];
+        $expected = $ctx['staging_dir'] . $stem . ".mp4";
         return file_exists($expected) && filesize($expected) > 0;
     }
     private function describeDownloadFailure(string $error_log, bool $frag_retry_abort): string
@@ -509,7 +736,7 @@ class DownloadService extends TranscoderBase
         $raw_file = "";
         foreach ($found as $f) {
             $ext = pathinfo($f, PATHINFO_EXTENSION);
-            if (!in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+            if (!in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'webp', 'gif', 'json'], true)) {
                 if (filesize($f) === 0) {
                     error_log("[MEeL] finalizeMusic: File kosong ditemukan: $f");
                     continue;
@@ -534,8 +761,6 @@ class DownloadService extends TranscoderBase
                 'duration' => $duration,
                 'description' => $description,
             ];
-            // Payload eksplisit agar upload_advanced.php tidak bergantung
-            // pada $_SESSION yang sudah session_write_close().
             $metaPayload = base64_encode(json_encode([
                 'title' => $title,
                 'artist' => $artist,
@@ -553,7 +778,9 @@ class DownloadService extends TranscoderBase
         string $title,
         int $duration,
         string $description = 'Upload by MEeL Engine',
-        int $queue_id = 0
+        int $queue_id = 0,
+        string $artist = '',
+        string $album = ''
     ): string {
         $shm_temp = $this->getShmTempPath();
         $staging_mp4 = "$shm_temp/{$basename}.mp4";
@@ -656,7 +883,9 @@ class DownloadService extends TranscoderBase
             $title,
             $description,
             $duration,
-            $queue_id
+            $queue_id,
+            $artist,
+            $album
         )) {
             return "";
         }
@@ -671,7 +900,6 @@ class DownloadService extends TranscoderBase
                 return $f;
             }
         }
-
         return null;
     }
     private function prepareWorkFolder(string $basename): array
@@ -690,7 +918,6 @@ class DownloadService extends TranscoderBase
             flock($lock_fp, LOCK_UN);
             fclose($lock_fp);
         }
-
         return [
             'folder_name' => $folder_name,
             'db_filename' => $db_filename,
@@ -720,7 +947,6 @@ class DownloadService extends TranscoderBase
         if (!is_dir($ram_folder)) {
             $this->ensureDir($ram_folder, 0777);
         }
-
         return [
             'folder' => $ram_folder,
             'sprite' => $ram_folder . 'thumb_sprite.webp',
@@ -857,10 +1083,10 @@ class DownloadService extends TranscoderBase
                 }
                 continue;
             }
-            if (is_resource($pipes[0])) {
+            if (isset($pipes[0]) && is_resource($pipes[0])) {
                 fclose($pipes[0]);
             }
-            if (is_resource($pipes[1])) {
+            if (isset($pipes[1]) && is_resource($pipes[1])) {
                 fclose($pipes[1]);
             }
             $stream = $pipes[2];
@@ -1012,7 +1238,9 @@ class DownloadService extends TranscoderBase
         string $title,
         string $description,
         int $duration,
-        int $queue_id = 0
+        int $queue_id = 0,
+        string $artist = '',
+        string $album = ''
     ): bool {
         $this->touchAccounting('persisting');
         if (!$this->isClientConnected()) {
@@ -1061,7 +1289,10 @@ class DownloadService extends TranscoderBase
             if ($thumb_generated && (!file_exists($hdd_thumb_full) || filesize($hdd_thumb_full) === 0)) {
                 throw new \RuntimeException("Thumbnail tidak ditemukan di HDD setelah dipindahkan: $hdd_thumb_full");
             }
-            $metadata = generate_search_metadata($title);
+            // Artist/album tidak disimpan di tabel video, tapi ikut terpakai
+            // untuk search_metadata supaya nama artis berbahasa Jepang tetap
+            // punya romaji/terjemahan yang bisa dicari.
+            $metadata = generate_search_metadata($title, $artist, $album);
             $views = 0;
             $stmt = $this->conn->prepare(
                 "INSERT INTO video (title, description, filename, thumbnail, duration, views, user_id, search_metadata, upload_date)
@@ -1090,8 +1321,6 @@ class DownloadService extends TranscoderBase
                     throw new \RuntimeException($capture['error']);
                 }
             }
-            // Settlement di dalam transaksi yang sama agar tidak ada
-            // jendela commit-video-tapi-queue-belum.
             if ($queue_id > 0) {
                 $qStmt = $this->conn->prepare(
                     "UPDATE upload_queue SET status = 'completed' WHERE id = ? AND status IN ('pending', 'processing')"
@@ -1129,5 +1358,4 @@ class DownloadService extends TranscoderBase
         }
     }
 }
-
 /* reference build: MEeL-C2H5NO2 [ffd332a] */

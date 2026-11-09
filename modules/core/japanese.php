@@ -30,15 +30,112 @@ if (!function_exists('meel_japanese_normalize_separators')) {
         return preg_replace('/(?<![\p{L}\p{N}])[xX](?![\p{L}\p{N}])/u', ' ', $text);
     }
 }
+if (!function_exists('meel_japanese_transliterate_slug')) {
+    function meel_japanese_transliterate_slug(string $text): string
+    {
+        $rule = "Katakana-Latin; Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; Latin-ASCII; Any-Lower;";
+        $transliterator = Transliterator::create($rule);
+        if ($transliterator) {
+            $text = (string) $transliterator->transliterate($text);
+        }
+        $clean = preg_replace('/[^a-z0-9\-]/u', '-', $text);
+        $clean = preg_replace('/-+/', '-', trim((string) $clean, '-'));
+        return (string) $clean;
+    }
+}
+if (!function_exists('meel_japanese_is_ascii_only')) {
+    function meel_japanese_is_ascii_only(string $text): bool
+    {
+        return preg_match('/^[\x20-\x7E]*$/', $text) === 1;
+    }
+}
+if (!function_exists('meel_japanese_log_mecab_failure')) {
+    function meel_japanese_log_mecab_failure(): void
+    {
+        static $logged = false;
+        if ($logged) return;
+        $logged = true;
+        error_log('[japanese.php] mecab tidak bisa dijalankan (' . getMecabPath() . ') — gloss/romaji memakai fallback tanpa analisis morfologi');
+    }
+}
+if (!function_exists('meel_japanese_clean_gloss')) {
+    function meel_japanese_clean_gloss(string $raw): string
+    {
+        $first = explode(';', $raw)[0] ?? '';
+        return trim((string) preg_replace('/\s*\([^)]*\)/u', '', $first));
+    }
+}
+if (!function_exists('meel_japanese_gloss_is_usable')) {
+    function meel_japanese_gloss_is_usable(string $gloss): bool
+    {
+        return mb_strlen($gloss, 'UTF-8') >= 3 && preg_match('/^[a-z]{1,2}$/i', $gloss) !== 1;
+    }
+}
+if (!function_exists('meel_japanese_katakana_parts')) {
+    /**
+     * @param callable(string):?string $lookup
+     * @return string[] daftar gloss, kosong bila tidak ada segmentasi yang yakin
+     */
+    function meel_japanese_katakana_parts(string $word, callable $lookup): array
+    {
+        $length = mb_strlen($word, 'UTF-8');
+        $min_part = 3;
+        if ($length < $min_part * 2) return [];
+        for ($cut = $min_part; $cut <= $length - $min_part; $cut++) {
+            $left = $lookup(mb_substr($word, 0, $cut));
+            if ($left === null || !meel_japanese_gloss_is_usable($left)) continue;
+            $right = $lookup(mb_substr($word, $cut));
+            if ($right === null || !meel_japanese_gloss_is_usable($right)) continue;
+            return [$left, $right];
+        }
+        return [];
+    }
+}
+if (!function_exists('meel_japanese_decompose_katakana')) {
+    /**
+     * @param callable(string):?string $lookup
+     * @return string[]
+     */
+    function meel_japanese_decompose_katakana(string $word, callable $lookup): array
+    {
+        $segments = preg_split('/[・･]/u', $word, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if ($segments === []) return [];
+        $glosses = [];
+        foreach ($segments as $segment) {
+            $segment = trim($segment);
+            if ($segment === '') continue;
+            $whole = $lookup($segment);
+            if ($whole !== null && meel_japanese_gloss_is_usable($whole)) {
+                $glosses[] = $whole;
+                continue;
+            }
+            $parts = meel_japanese_katakana_parts($segment, $lookup);
+            if ($parts === []) return [];
+            $glosses = array_merge($glosses, $parts);
+        }
+        $glosses = array_values(array_unique($glosses));
+        if (count($glosses) < 2 || count($glosses) > 4) return [];
+        return $glosses;
+    }
+}
 if (!function_exists('getRomajiName')) {
     function getRomajiName(string $text): string
     {
         if (empty($text)) return 'untitled';
+        static $memo = [];
+        $memo_key = $text;
+        if (isset($memo[$memo_key])) return $memo[$memo_key];
+        if (count($memo) > 64) $memo = [];
         $text = Normalizer::normalize($text, Normalizer::FORM_C) ?: $text;
         $original_text = $text;
         $text = meel_japanese_normalize_separators($text);
+        if (meel_japanese_is_ascii_only($text)) {
+            $slug = meel_japanese_transliterate_slug($text);
+            if ($slug === '') $slug = meel_japanese_transliterate_slug($original_text);
+            return $memo[$memo_key] = ($slug !== '' ? $slug : 'untitled');
+        }
         $mecab_bin = getMecabPath();
-        $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
+        $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"], 2 => ["file", "/dev/null", "w"]];
         $mecab_cmd = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($mecab_bin);
         $process = proc_open($mecab_cmd, $descriptorspec, $pipes);
         $parsedText = '';
@@ -61,18 +158,14 @@ if (!function_exists('getRomajiName')) {
                 }
             }
             $text = trim($parsedText);
+        } else {
+            meel_japanese_log_mecab_failure();
         }
-        $rule = "Katakana-Latin; Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; Latin-ASCII; Any-Lower;";
-        $transliterator = Transliterator::create($rule);
-        if ($transliterator) $text = $transliterator->transliterate($text);
-        $clean = preg_replace('/[^a-z0-9\-]/u', '-', $text);
-        $clean = preg_replace('/-+/', '-', trim($clean, '-'));
-        if (empty($clean)) {
-            $fallback = preg_replace('/[^a-z0-9\-]/u', '-', $original_text);
-            $fallback = preg_replace('/-+/', '-', trim($fallback, '-'));
-            return $fallback ?: 'untitled';
+        $clean = meel_japanese_transliterate_slug($text);
+        if ($clean === '') {
+            $clean = meel_japanese_transliterate_slug($original_text);
         }
-        return $clean;
+        return $memo[$memo_key] = ($clean !== '' ? $clean : 'untitled');
     }
 }
 if (!function_exists('analyzeJapaneseText')) {
@@ -80,9 +173,19 @@ if (!function_exists('analyzeJapaneseText')) {
     {
         $result = ['romaji' => 'untitled-media', 'english' => ''];
         if (empty(trim($text))) return $result;
+        static $memo = [];
+        $memo_key = $text;
+        if (isset($memo[$memo_key])) return $memo[$memo_key];
+        if (count($memo) > 64) $memo = [];
         $text = Normalizer::normalize($text, Normalizer::FORM_C) ?: $text;
         $original_text = $text;
         $clean_text = meel_japanese_normalize_separators($text);
+        if (meel_japanese_is_ascii_only($text)) {
+            $slug = meel_japanese_transliterate_slug($clean_text);
+            if ($slug === '') $slug = meel_japanese_transliterate_slug($original_text);
+            $result['romaji'] = $slug !== '' ? $slug : 'untitled';
+            return $memo[$memo_key] = $result;
+        }
         static $aliases = null;
         if ($aliases === null) {
             $alias_path = __DIR__ . '/japanese_aliases.php';
@@ -115,10 +218,11 @@ if (!function_exists('analyzeJapaneseText')) {
         $matched_phrases = array_keys($alias_glosses);
         $alias_glosses = array_values($alias_glosses);
         $mecab_bin = getMecabPath();
-        $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
+        $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"], 2 => ["file", "/dev/null", "w"]];
         $mecab_cmd = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($mecab_bin);
         $process = proc_open($mecab_cmd, $descriptorspec, $pipes);
         if (!is_resource($process)) {
+            meel_japanese_log_mecab_failure();
             $result['romaji'] = getRomajiName($text);
             $result['english'] = trim(implode(' ', array_unique($alias_glosses)));
             return $result;
@@ -151,6 +255,14 @@ if (!function_exists('analyzeJapaneseText')) {
                 error_log('[japanese.php] Dictionary tidak ditemukan di: ' . $dict_path);
             }
         }
+        $dict_lookup = function (string $word) use ($dict_ready, $dict_stmt): ?string {
+            if (!$dict_ready || $dict_stmt === null || $word === '' || $word === '*') return null;
+            $dict_stmt->execute([':w' => $word]);
+            $row = $dict_stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row || empty($row['glosses'])) return null;
+            $gloss = meel_japanese_clean_gloss((string) $row['glosses']);
+            return $gloss !== '' ? $gloss : null;
+        };
         $parsed_romaji = '';
         $glosses = [];
         foreach (explode("\n", trim($output)) as $line) {
@@ -180,32 +292,32 @@ if (!function_exists('analyzeJapaneseText')) {
                     break;
                 }
             }
-            if ($is_functional || $inside_alias) continue;
-            if ($is_single_kana) continue;
+            if ($is_functional || $inside_alias || $is_single_kana) continue;
             $override = $gloss_overrides[$surface] ?? $gloss_overrides[$base_form] ?? null;
             if ($override !== null) {
                 $glosses[] = $override;
                 continue;
             }
+            $is_katakana = preg_match('/^[\x{30A0}-\x{30FF}・]+$/u', $surface) === 1;
             $is_proper_noun = $pos === '名詞' && $sub === '固有名詞';
             if ($is_proper_noun) {
-                $is_loanword = preg_match('/^[\x{30A0}-\x{30FF}]+$/u', $surface) === 1
-                    && mb_strlen($surface, 'UTF-8') >= 4;
+                $is_loanword = $is_katakana && mb_strlen($surface, 'UTF-8') >= 4;
                 $is_proper_noun = !$is_loanword;
             }
-            if ($dict_ready && !$is_proper_noun) {
+            $gloss_added = false;
+            if (!$is_proper_noun) {
                 foreach (array_unique([$surface, $base_form]) as $candidate) {
-                    if ($candidate === '*' || $candidate === '') continue;
-                    $dict_stmt->execute([':w' => $candidate]);
-                    $row = $dict_stmt->fetch(PDO::FETCH_ASSOC);
-                    if ($row && !empty($row['glosses'])) {
-                        $gloss_parts = explode(';', (string) $row['glosses']);
-                        $gloss = trim((string) preg_replace('/\s*\([^)]*\)/u', '', (string)($gloss_parts[0] ?? '')));
-                        if ($gloss !== '') {
-                            $glosses[] = $gloss;
-                        }
+                    $gloss = $dict_lookup((string) $candidate);
+                    if ($gloss !== null) {
+                        $glosses[] = $gloss;
+                        $gloss_added = true;
                         break;
                     }
+                }
+            }
+            if (!$gloss_added && $is_katakana && $pos === '名詞' && mb_strlen($surface, 'UTF-8') >= 4) {
+                foreach (meel_japanese_decompose_katakana($surface, $dict_lookup) as $gloss) {
+                    $glosses[] = $gloss;
                 }
             }
         }

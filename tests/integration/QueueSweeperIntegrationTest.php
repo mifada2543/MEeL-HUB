@@ -10,7 +10,6 @@ class QueueSweeperIntegrationTest extends TestCase
     private int $transcodeQueueId;
     private const COST_UPLOAD = 7;
     private const COST_TRANSCODE = 3;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -27,9 +26,10 @@ class QueueSweeperIntegrationTest extends TestCase
         $this->uid = (int)$this->conn->insert_id;
         $this->conn->query(
             "INSERT INTO upload_queue
-               (url, media_type, user_id, status, coin_cost, coin_refunded, created_at)
+               (url, media_type, user_id, status, coin_cost, coin_refunded, created_at, updated_at)
              VALUES ('http://sweeper-test', 'video', {$this->uid}, 'processing',
-                     " . self::COST_UPLOAD . ", 0, DATE_SUB(NOW(), INTERVAL 10 HOUR))"
+                     " . self::COST_UPLOAD . ", 0, DATE_SUB(NOW(), INTERVAL 10 HOUR),
+                     DATE_SUB(NOW(), INTERVAL 10 HOUR))"
         );
         $this->uploadQueueId = (int)$this->conn->insert_id;
         $this->conn->query(
@@ -126,8 +126,10 @@ class QueueSweeperIntegrationTest extends TestCase
     public function testFreshRowsAreLeftAlone(): void
     {
         $this->conn->query(
-            "UPDATE upload_queue SET created_at = DATE_SUB(NOW(), INTERVAL 1 MINUTE)
-             WHERE id = {$this->uploadQueueId}"
+            "UPDATE upload_queue
+                SET created_at = DATE_SUB(NOW(), INTERVAL 1 MINUTE),
+                    updated_at = DATE_SUB(NOW(), INTERVAL 1 MINUTE)
+              WHERE id = {$this->uploadQueueId}"
         );
         $this->conn->query(
             "UPDATE transcode_queue SET created_at = DATE_SUB(NOW(), INTERVAL 1 MINUTE)
@@ -138,6 +140,47 @@ class QueueSweeperIntegrationTest extends TestCase
         $this->assertSame(0, $res['refunded']);
         $this->assertSame('processing', $this->queueState('upload_queue', $this->uploadQueueId)['status']);
         $this->assertSame(0, $this->balance(), 'Saldo tidak boleh berubah');
+    }
+    public function testLongRunningUploadSurvivesWhileHeartbeatIsFresh(): void
+    {
+        $this->conn->query(
+            "UPDATE upload_queue
+                SET created_at = DATE_SUB(NOW(), INTERVAL 3 HOUR), updated_at = NOW()
+              WHERE id = {$this->uploadQueueId}"
+        );
+        $res = GarbageCollector::sweepStuckQueues($this->conn);
+        $this->assertSame(
+            'processing',
+            $this->queueState('upload_queue', $this->uploadQueueId)['status'],
+            'Upload 3 jam yang detaknya masih segar tidak boleh dianggap macet'
+        );
+        $this->assertSame(1, $res['scanned'], 'Hanya transcode_queue yang macet di sini');
+        $this->assertSame(
+            self::COST_TRANSCODE,
+            $this->balance(),
+            'Hanya baris transcode yang direfund; upload yang masih hidup tidak boleh ikut'
+        );
+        $this->assertSame(0, (int)$this->queueState('upload_queue', $this->uploadQueueId)['coin_refunded']);
+    }
+    public function testThrottledSweepSkipsWithinIntervalThenRunsAgain(): void
+    {
+        $file = MEEL_ROOT . '/temp/queue_sweep_test_' . bin2hex(random_bytes(4)) . '.txt';
+        try {
+            $first = GarbageCollector::releaseStaleQueueRowsThrottled($this->conn, 30, ['upload_queue'], 60, $file);
+            $this->assertIsArray($first, 'Panggilan pertama harus benar-benar jalan');
+            $this->assertSame(1, $first['refunded']);
+
+            $second = GarbageCollector::releaseStaleQueueRowsThrottled($this->conn, 30, ['upload_queue'], 60, $file);
+            $this->assertNull($second, 'Panggilan dalam interval throttle harus di-skip');
+
+            file_put_contents($file, (string) (time() - 120));
+            $third = GarbageCollector::releaseStaleQueueRowsThrottled($this->conn, 30, ['upload_queue'], 60, $file);
+            $this->assertIsArray($third, 'Setelah interval lewat, sweep harus jalan lagi');
+            $this->assertSame(0, $third['refunded'], 'Tidak boleh refund ganda');
+            $this->assertSame(self::COST_UPLOAD, $this->balance());
+        } finally {
+            @unlink($file);
+        }
     }
     public function testAlreadyCompletedRowsAreNotTouched(): void
     {
