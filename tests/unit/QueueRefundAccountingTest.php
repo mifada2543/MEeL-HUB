@@ -2,13 +2,6 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * Akuntansi MEeLCoin pada baris antrean upload lanjutan.
- *
- * Alur baru memakai hold: saldo total tidak berubah sampai media dan file
- * terverifikasi. `coin_cost` tetap dicatat supaya baris legacy dan sweeper
- * tahu berapa yang harus diselesaikan, sedangkan `hold_id` menunjuk
- * reservasi yang harus dilepas kalau job gagal.
- *
  * @coversNothing
  */
 class QueueRefundAccountingTest extends TestCase
@@ -17,7 +10,6 @@ class QueueRefundAccountingTest extends TestCase
     private string $gc;
     private string $uploadHelper;
     private string $downloadService;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -26,18 +18,12 @@ class QueueRefundAccountingTest extends TestCase
         $this->uploadHelper = $this->read('modules/core/helpers/upload.php');
         $this->downloadService = $this->read('modules/transcoder/DownloadService.php');
     }
-
     private function read(string $rel): string
     {
         $path = MEEL_ROOT . '/' . $rel;
         $this->assertFileExists($path);
         return (string) file_get_contents($path);
     }
-
-    /**
-     * Upload lanjutan harus mereservasi hold, bukan memotong saldo di awal.
-     * Biaya dan hold tetap dicatat di baris antrean untuk penyelesaian.
-     */
     public function testAdvancedUploadReservesBeforeRecordingQueueCost(): void
     {
         $this->assertStringNotContainsString(
@@ -45,14 +31,11 @@ class QueueRefundAccountingTest extends TestCase
             $this->advanced,
             'upload_advanced.php tidak boleh memotong saldo sebelum media terverifikasi'
         );
-
         $holdPos = strpos($this->advanced, 'MeelCoin::hold(');
         $this->assertNotFalse($holdPos, 'upload_advanced.php harus memanggil MeelCoin::hold()');
-
         $attachPos = strpos($this->advanced, 'UploadAttempt::attachHold(');
         $this->assertNotFalse($attachPos, 'hold harus diikat ke sesi upload');
         $this->assertGreaterThan($holdPos, $attachPos, 'attachHold() harus setelah hold dibuat');
-
         $recordPos = strpos($this->advanced, 'DownloadService::setPendingCoinCost(');
         $this->assertNotFalse(
             $recordPos,
@@ -64,11 +47,6 @@ class QueueRefundAccountingTest extends TestCase
             'setPendingCoinCost() harus dipanggil setelah hold terikat ke attempt'
         );
     }
-
-    /**
-     * `lockQueue()` adalah satu-satunya INSERT ke `upload_queue`, jadi apa pun
-     * yang ia tulis ke `coin_cost` adalah nilai yang akan direfund.
-     */
     public function testQueueRowCostComesFromThePendingCostNotAFallback(): void
     {
         $this->assertMatchesRegularExpression(
@@ -87,10 +65,6 @@ class QueueRefundAccountingTest extends TestCase
             'upload lanjutan harus mencatat biaya sebelum membuat baris antrean'
         );
     }
-
-    /**
-     * Tidak boleh ada jalur yang menandai baris `failed` tanpa refund.
-     */
     public function testNoRawUpdateMarksStaleQueueRowsFailedWithoutRefund(): void
     {
         $this->assertStringNotContainsString(
@@ -100,16 +74,16 @@ class QueueRefundAccountingTest extends TestCase
             . 'baris failed tidak lagi dipilih sweeper, jadi biaya MEeLCoin hilang permanen'
         );
         $this->assertStringContainsString(
-            'GarbageCollector::releaseStaleQueueRows(',
+            'GarbageCollector::releaseStaleQueueRowsThrottled(',
             $this->advanced,
             'pembersihan baris macet harus lewat jalur yang sama dengan sweeper'
         );
+        $this->assertStringNotContainsString(
+            'UPDATE upload_queue SET status',
+            $this->advanced,
+            'halaman tidak boleh menandai baris antrean gagal tanpa refund'
+        );
     }
-
-    /**
-     * Satu implementasi, dua pemanggil — supaya tidak bisa lagi berbeda
-     * perilaku.
-     */
     public function testSweeperAndStaleCleanupShareOneImplementation(): void
     {
         $this->assertStringContainsString(
@@ -123,11 +97,6 @@ class QueueRefundAccountingTest extends TestCase
             'sweepStuckQueues() harus mendelegasikan ke releaseStaleQueueRows()'
         );
     }
-
-    /**
-     * Penyelesaian memakai biaya/hold yang tercatat di baris itu, bukan
-     * harga saat ini. Harga MEeLCoin bisa berubah setelah job dibuat.
-     */
     public function testSettlementUsesTheCostAndHoldRecordedOnTheRow(): void
     {
         $this->assertStringContainsString(
@@ -152,12 +121,6 @@ class QueueRefundAccountingTest extends TestCase
             . 'jumlah yang benar-benar dicatat saat baris dibuat'
         );
     }
-
-    /**
-     * Refund harus Exactly-once: baris yang sudah `coin_refunded = 1` tidak
-     * boleh direfund lagi, dan penandanya hanya boleh ditulis setelah coins
-     * benar-benar kembali.
-     */
     public function testRefundIsGuardedByTheCoinRefundedFlag(): void
     {
         $this->assertStringContainsString(
@@ -171,7 +134,6 @@ class QueueRefundAccountingTest extends TestCase
             'baris harus dikunci FOR UPDATE selama refund, supaya dua sweeper '
             . 'concurrent tidak bisa merefund baris yang sama'
         );
-
         $refundPos = strpos($this->gc, 'MeelCoin::refund(');
         $markPos = strpos($this->gc, 'SET coin_refunded = 1');
         $this->assertNotFalse($refundPos);
@@ -182,17 +144,10 @@ class QueueRefundAccountingTest extends TestCase
             'penanda coin_refunded = 1 harus ditulis SETELAH refund berhasil, bukan sebelumnya'
         );
     }
-
-    /**
-     * Invarian lama T6 tetap berlaku: `releaseQueue()` hanya boleh mengubah
-     * status. Kalau ia ikut menyentuh `coin_refunded`, baris yang sudah
-     * direfund jalur normal bisa direfund lagi.
-     */
     public function testReleaseQueueStillOnlyTouchesStatus(): void
     {
         $start = strpos($this->downloadService, 'function releaseQueue(');
         $this->assertNotFalse($start, 'releaseQueue() tidak ditemukan');
-
         $brace = strpos($this->downloadService, '{', $start);
         $depth = 0;
         $body = '';
@@ -207,7 +162,6 @@ class QueueRefundAccountingTest extends TestCase
                 }
             }
         }
-
         $this->assertStringNotContainsString(
             'coin_refunded',
             $body,
@@ -216,5 +170,4 @@ class QueueRefundAccountingTest extends TestCase
         );
     }
 }
-
 /* reference build: MEeL-C8H12N4O [queue-refund-accounting-t8] */

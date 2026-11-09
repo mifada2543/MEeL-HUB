@@ -136,8 +136,6 @@ class EncodeService extends TranscoderBase
                         throw new \RuntimeException($capture['error']);
                     }
                 }
-                // Settlement di dalam transaksi yang sama agar tidak ada
-                // jendela commit-media-tapi-queue-belum.
                 $this->settleQueue('completed');
                 $this->conn->commit();
             } catch (\Throwable $e) {
@@ -203,9 +201,6 @@ class EncodeService extends TranscoderBase
         $process = proc_open($args, $descriptors, $pipes, null, $env);
         if (!is_resource($process)) {
             return ['exit' => -1, 'log' => 'Gagal menjalankan FFmpeg.'];
-        }
-        if (is_resource($pipes[0])) {
-            fclose($pipes[0]);
         }
         $stdout = $pipes[1];
         $stderr = $pipes[2];
@@ -296,6 +291,20 @@ class EncodeService extends TranscoderBase
         if ($this->currentAttemptId > 0 && class_exists('UploadAttempt')) {
             UploadAttempt::setStage($this->conn, $this->currentAttemptId, 'encoding_music');
         }
+        $this->heartbeatQueue();
+    }
+    private function heartbeatQueue(): void
+    {
+        if ($this->currentQueueId <= 0) {
+            return;
+        }
+        $stmt = $this->conn->prepare('UPDATE upload_queue SET updated_at = NOW() WHERE id = ?');
+        if (!$stmt) {
+            return;
+        }
+        $stmt->bind_param('i', $this->currentQueueId);
+        $stmt->execute();
+        $stmt->close();
     }
     private function assertEncodeStorageReady(string $music_dir): ?array
     {
@@ -434,5 +443,4 @@ class EncodeService extends TranscoderBase
         return 'music_default.png';
     }
 }
-
 /* reference build: MEeL-C3H7NO2S [ffd332a] */

@@ -1,6 +1,5 @@
 <?php
 /* reference build: MEeL-C3H7NO2S [ffd332a] */
-
 require_once __DIR__ . '/modules/core/helpers.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -8,7 +7,6 @@ ignore_user_abort(true);
 set_time_limit(0);
 putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
 putenv("PATH=/usr/local/bin:/usr/bin:/bin");
-
 require_once __DIR__ . '/auth/auth.php';
 require_once __DIR__ . '/auth/config.php';
 require_once __DIR__ . '/modules/core/activity_logger.php';
@@ -20,7 +18,6 @@ require_once __DIR__ . '/modules/core/MeelCoin.php';
 require_once __DIR__ . '/modules/core/Notification.php';
 meel_storage_guard();
 GarbageCollector::run();
-
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
     if (!(error_reporting() & $errno)) return false;
     if (strpos($errfile, 'node_modules') !== false || strpos($errfile, 'vendor') !== false) return false;
@@ -33,7 +30,6 @@ set_error_handler(function ($errno, $errstr, $errfile, $errline) {
     flush();
     return true;
 });
-
 register_shutdown_function(function () {
     if (connection_aborted() || connection_status() !== CONNECTION_NORMAL) return;
     $error = error_get_last();
@@ -45,17 +41,13 @@ register_shutdown_function(function () {
         flush();
     }
 });
-
 $message = "";
 $rate_limit_msg = "";
-
 require_once __DIR__ . '/modules/core/System.php';
 $sys = new System($conn);
 $is_busy = $sys->isServerBusy();
-
 $user_role = get_user_role($conn, (int)$_SESSION['user_id']);
 $is_admin = ($user_role === 'admin');
-
 $get_queue_status = function(int $uid, string $type): ?string {
     global $conn;
     $safe_type = $conn->real_escape_string($type === 'music' ? 'music' : 'video');
@@ -66,20 +58,15 @@ $get_queue_status = function(int $uid, string $type): ?string {
     $row = $q->fetch_assoc();
     return $row['status'] ?? null;
 };
-
 $transcoder = new Transcoder($conn, $_SESSION['user_id'], new BrowserProgressObserver($is_admin));
 register_shutdown_function([$transcoder, 'terminateAllProcesses']);
-
+GarbageCollector::releaseStaleQueueRowsThrottled($conn, 5, ['upload_queue']);
 if (!$is_admin) {
-    GarbageCollector::releaseStaleQueueRows($conn, 30, ['upload_queue']);
     GarbageCollector::sweepUploadAccounting($conn);
 }
-
 $q_active = $conn->query("SELECT COUNT(*) FROM upload_queue WHERE status='processing'");
 $active_count = $q_active ? (int)$q_active->fetch_row()[0] : 0;
-
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
-
 $coin_balance = 0;
 $coin_held = 0;
 $coin_available = 0;
@@ -91,7 +78,6 @@ $quota_video_used = 0;
 $quota_music_used = 0;
 $quota_video_remaining = 0;
 $quota_music_remaining = 0;
-
 if ($meelcoin_enabled) {
     if (!$is_admin) {
         MeelCoin::refill($conn, (int)$_SESSION['user_id'], $user_role);
@@ -113,9 +99,7 @@ if ($meelcoin_enabled) {
     $quota_video_remaining = ($user_role === 'admin') ? -1 : $upload_max - $quota_video_used;
     $quota_music_remaining = ($user_role === 'admin') ? -1 : $upload_max - $quota_music_used;
 }
-
 $coin_active = $meelcoin_enabled && !$is_admin && $coin_cost > 0;
-
 $upload_attempt_token = '';
 $upload_attempt_id = 0;
 $coin_hold_id = 0;
@@ -126,7 +110,6 @@ if ($coin_active && $_SERVER['REQUEST_METHOD'] !== 'POST') {
         $upload_attempt_token = (string)$new_attempt['token'];
     }
 }
-
 $fail_upload_attempt = static function (string $reason) use (&$upload_attempt_id, $conn): void {
     if ($upload_attempt_id > 0) {
         UploadAttempt::fail($conn, $upload_attempt_id, $reason);
@@ -154,7 +137,6 @@ $send_coin_notification = static function (string $detail) use ($conn, $coin_cos
         error_log('[MEeL-Upload] Gagal membuat notifikasi MEeLCoin: ' . $e->getMessage());
     }
 };
-
 $is_confirmed_download_failure = static function (string $msg): bool {
     if ($msg === '' || $msg === 'DISCONNECTED') return true;
     foreach (['Download gagal', 'File audio tidak ditemukan'] as $prefix) {
@@ -162,13 +144,11 @@ $is_confirmed_download_failure = static function (string $msg): bool {
     }
     return false;
 };
-
 if (isset($_GET['success'])) {
     $message = 'success';
     MediaLibrary::clearCountsCache();
     log_activity($conn, (int)$_SESSION['user_id'], 'upload_url', 'media');
 }
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $message = 'csrf_invalid';
@@ -181,7 +161,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 $rate_limit_msg = "MEeLCoin tersedia tidak cukup! Dibutuhkan {$coin_cost} coin, tersedia: {$coin_available} (saldo total {$coin_balance}, ditahan {$coin_held}).";
             }
         }
-
         if ($message === '') {
             if ($coin_active) {
                 $post_token = trim((string)($_POST['upload_attempt'] ?? ''));
@@ -195,7 +174,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 } else {
                     $upload_attempt_token = $post_token;
                 }
-
                 if ($attempt === null) {
                     $message = 'rate_limit';
                     $rate_limit_msg = 'Sesi upload tidak valid. Muat ulang halaman lalu coba lagi.';
@@ -225,10 +203,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 }
             }
         }
-
         if ($message === '') {
             $coin_deducted = $coin_hold_id > 0;
-
             $type = $_POST['type'] ?? '';
             if (!$meelcoin_enabled) {
                 $limit_table = ($type === 'music') ? 'music' : 'video';
@@ -238,17 +214,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     $rate_limit_msg = "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.";
                 }
             }
-
             if ($message === '') {
-                // Lepaskan session lock supaya heartbeat browser bisa masuk
-                // selama download/transcode berjalan lama.
                 if (session_status() === PHP_SESSION_ACTIVE) {
                     session_write_close();
                 }
                 try {
                     $url = trim($_POST['url']);
                     $message = $transcoder->processDownload($url, $type);
-
                 if (is_string($message) && str_starts_with($message, 'ENCODE_MUSIC:')) {
                     $encodePayload = substr($message, strlen('ENCODE_MUSIC:'));
                     $payloadParts = explode('|', $encodePayload, 2);
@@ -260,26 +232,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                             $payloadMeta = $decodedMeta;
                         }
                     }
-
                     while (ob_get_level()) {
                         ob_end_clean();
                     }
-
                     echo '<script>if(typeof meelPhase==="function"){meelPhase("encode");}</script>';
                     echo str_repeat(' ', 1024);
                     flush();
-
                     $meta_key = pathinfo($temp_file, PATHINFO_FILENAME);
                     $pending = $payloadMeta ?? (is_array($_SESSION['meel_pending_music'] ?? null)
                         ? ($_SESSION['meel_pending_music'][$meta_key] ?? null)
                         : null);
-
                     $enc_title = (string)($pending['title'] ?? 'Unknown');
                     $enc_artist = (string)($pending['artist'] ?? 'Unknown Artist');
                     $enc_album = (string)($pending['album'] ?? 'Single');
                     $enc_duration = (int)($pending['duration'] ?? 0);
                     $enc_desc = (string)($pending['description'] ?? 'Upload by MEeL Engine');
-
                     $queue_id = $transcoder->getLastQueueId();
                         try {
                             $result = $transcoder->encodeMusic(
@@ -290,7 +257,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                         error_log('[MEeL-Upload] encodeMusic exception: ' . $e->getMessage());
                         $result = ['status' => 'error', 'msg' => 'Gagal mengonversi audio: ' . $e->getMessage()];
                     }
-
                     if ($result['status'] === 'success') {
                         $already_processed = !empty($result['already_processed']);
                         if ($coin_active && !$already_processed) {
@@ -327,12 +293,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                            . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ Encode Gagal</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
                            . '</script>';
                     }
-
                     echo str_repeat(' ', 1024);
                     flush();
                     exit;
                 }
-
                 if (is_string($message) && str_starts_with($message, 'REDIRECT:')) {
                     $target = substr($message, strlen('REDIRECT:'));
                     while (ob_get_level()) {
@@ -347,7 +311,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                        . '</script></body></html>';
                     exit;
                 }
-
                 if (is_string($message) && str_starts_with($message, 'DONE:')) {
                     $done_title = substr($message, strlen('DONE:'));
                     if ($coin_active) {
@@ -384,29 +347,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     flush();
                     exit;
                 }
-
                 if ($coin_deducted) {
                     $fail_upload_attempt('download_failed');
-                    if (is_string($message) && $message === 'DISCONNECTED') {
-                        $err_msg = json_encode('Download terputus. MEeLCoin tidak dipotong.', JSON_HEX_TAG | JSON_HEX_AMP);
-                        echo '<script>'
-                           . 'if(typeof meelError==="function"){meelError(' . $err_msg . ',"upload_advanced.php");}'
-                           . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ Download Terputus</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
-                           . '</script>';
-                        echo str_repeat(' ', 1024);
-                        flush();
-                        exit;
-                    }
-                    $err_msg = $message !== '' ? json_encode($message, JSON_HEX_TAG | JSON_HEX_AMP) : '"Download gagal: media tidak tersimpan di server."';
-                    $err_label = 'Download Gagal';
+                }
+                if (is_string($message) && $message === 'DISCONNECTED') {
+                    $err_msg = json_encode('Download terputus; proses dihentikan tanpa memotong MEeLCoin.', JSON_HEX_TAG | JSON_HEX_AMP);
                     echo '<script>'
-                       . 'if(typeof meelError==="function"){meelError(' . $err_msg . ');}'
-                       . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ ' . $err_label . '</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
+                       . 'if(typeof meelError==="function"){meelError(' . $err_msg . ',"upload_advanced.php");}'
+                       . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ Download Terputus</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
                        . '</script>';
                     echo str_repeat(' ', 1024);
                     flush();
                     exit;
                 }
+                $err_msg = $message !== '' ? json_encode($message, JSON_HEX_TAG | JSON_HEX_AMP) : '"Download gagal: media tidak tersimpan di server."';
+                $err_label = 'Download Gagal';
+                echo '<script>'
+                   . 'if(typeof meelError==="function"){meelError(' . $err_msg . ');}'
+                   . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ ' . $err_label . '</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
+                   . '</script>';
+                echo str_repeat(' ', 1024);
+                flush();
+                exit;
             } catch (Exception $e) {
                 error_log('[MEeL-Upload] ' . $e->getMessage());
                 if ($coin_active) {
@@ -444,7 +406,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     }
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -464,13 +425,11 @@ include __DIR__ . '/partials/scripts.php';
 
 <body class="min-h-screen flex flex-col">
 <?php include __DIR__ . '/partials/skip-link.php'; ?>
-
     <?php if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $message === 'busy' || $message === 'rate_limit'): ?>
         <?php include __DIR__ . '/partials/ui.php'; ?>
     <?php endif; ?>
     <main class="flex-grow" style="position:relative;z-index:1;">
         <div class="wrap">
-
             <div class="masthead">
                 <a href="./" class="masthead-logo">
                     <img src="assets/MEeL.png" alt="MEeL">
@@ -487,7 +446,6 @@ include __DIR__ . '/partials/scripts.php';
                     <div><?= date('d M Y') ?></div>
                 </div>
             </div>
-
             <?php if ($is_admin): ?>
                 <div class="admin-bar">
                     <span class="admin-badge">
@@ -510,11 +468,8 @@ include __DIR__ . '/partials/scripts.php';
                     </a>
                 </div>
             <?php endif; ?>
-
             <div class="page-grid">
-
                 <div>
-
                     <?php if ($message === 'success'): ?>
                         <div class="alert-banner alert-success">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px">
@@ -563,7 +518,6 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     <?php endif; ?>
                     <div class="form-card">
-
                         <div class="form-card-header">
                             <div>
                                 <div style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;">
@@ -573,7 +527,6 @@ include __DIR__ . '/partials/scripts.php';
                                     Unduh & <span style="color:#3b82f6;">Proses</span>
                                 </div>
                             </div>
-
                             <div class="queue-chip" style="<?= $is_busy
                                                                 ? 'background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);color:#f97316;'
                                                                 : 'background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#22c55e;' ?>">
@@ -581,7 +534,6 @@ include __DIR__ . '/partials/scripts.php';
                                 <?= $is_busy ? 'Sibuk' : 'Siap' ?>
                             </div>
                         </div>
-
                         <div class="form-card-body">
                             <form method="POST" onsubmit="return startAdvancedUpload(this)" style="display:flex;flex-direction:column;gap:1.25rem;">
                                 <?php if (isset($_SESSION['csrf_token'])): ?>
@@ -590,7 +542,6 @@ include __DIR__ . '/partials/scripts.php';
                                 <input type="hidden" name="upload_attempt" id="upload-attempt"
                                     value="<?= htmlspecialchars($upload_attempt_token, ENT_QUOTES) ?>"
                                     data-heartbeat-url="api/upload-heartbeat">
-
                                 <div>
                                     <label class="f-label">URL Sumber</label>
                                     <div class="url-wrap">
@@ -602,7 +553,6 @@ include __DIR__ . '/partials/scripts.php';
                                     </div>
                                     <div id="url-preview" style="display:none;margin-top:8px;padding:8px 12px;border-radius:10px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);font-family:var(--font-mono);font-size:.65rem;color:#60a5fa;word-break:break-all;"></div>
                                 </div>
-
                                 <div>
                                     <label class="f-label">Tipe Media</label>
                                     <div class="type-grid">
@@ -624,7 +574,6 @@ include __DIR__ . '/partials/scripts.php';
                                         </label>
                                     </div>
                                 </div>
-
                                 <button type="submit" class="submit-btn" id="submit-btn"
                                     <?= $is_busy ? 'disabled' : '' ?>>
                                     <i data-lucide="download-cloud" style="width:16px;height:16px;"></i>
@@ -633,7 +582,6 @@ include __DIR__ . '/partials/scripts.php';
                             </form>
                         </div>
                     </div>
-
                     <div class="entry" style="margin-top:1rem;padding:1.5rem 1.75rem;">
                         <div style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -663,9 +611,7 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     </div>
                 </div>
-
                 <aside>
-
                     <div class="side-card">
                         <div class="side-card-header">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -695,7 +641,6 @@ include __DIR__ . '/partials/scripts.php';
                                     <?= $is_busy ? 'Sibuk' : 'Siap Proses' ?>
                                 </span>
                             </div>
-
                             <div style="height:1px;background:var(--border);"></div>
                             <div>
                                 <?php if ($meelcoin_enabled): ?>
@@ -761,7 +706,6 @@ include __DIR__ . '/partials/scripts.php';
                                     </div>
                                 <?php endif; ?>
                             </div>
-
                             <?php if ($is_admin): ?>
                                 <div style="height:1px;background:var(--border);"></div>
                                 <a href="admin/beranda#queues" style="font-family:var(--font-mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);text-decoration:none;display:flex;align-items:center;gap:.4rem;opacity:.8;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
@@ -775,7 +719,6 @@ include __DIR__ . '/partials/scripts.php';
                             <?php endif; ?>
                         </div>
                     </div>
-
                     <div class="side-card">
                         <div class="side-card-header">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -802,7 +745,6 @@ include __DIR__ . '/partials/scripts.php';
                             <?php endforeach; ?>
                         </div>
                     </div>
-
                     <div class="side-card">
                         <div class="side-card-header">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -831,7 +773,6 @@ include __DIR__ . '/partials/scripts.php';
                             </div>
                         </div>
                     </div>
-
                     <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
                         <a href="./" class="check-btn" style="flex:1;">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -860,7 +801,6 @@ include __DIR__ . '/partials/scripts.php';
             </div>
         </div>
     </main>
-
     <?php include __DIR__ . '/partials/footer.php'; ?>
     <script src="assets/js/shared/upload-heartbeat.js<?= meel_asset_version('assets/js/shared/upload-heartbeat.js') ?>"></script>
     <script src="assets/js/up/main.js<?= meel_asset_version('assets/js/up/main.js') ?>"></script>

@@ -316,6 +316,53 @@ class JapaneseTest extends TestCase
 
         $this->assertSame('a-b', getRomajiName('A x B'));
     }
+
+    public function testAnalyzeJapaneseTextGlossesKatakanaCompounds(): void
+    {
+        $this->skipIfNoMecab();
+
+        // Kata gabungan tidak ada di kamus, tapi kedua bagiannya ada.
+        $this->assertStringContainsString('unicorn girl', analyzeJapaneseText('ユニコーンガール')['english']);
+        $this->assertStringContainsString('liar dancer', analyzeJapaneseText('ライアーダンサー')['english']);
+        $this->assertStringContainsString('anniversary song', analyzeJapaneseText('3周年アニバーサリーソング')['english']);
+    }
+
+    public function testAnalyzeJapaneseTextDoesNotGuessUnknownKatakanaParts(): void
+    {
+        $this->skipIfNoMecab();
+
+        // Satu bagian tidak ada di kamus: lebih baik tanpa gloss daripada
+        // menebak ("モノシリメガネ" -> glasses, "ドリーマーズビート" -> "dolly MERS beet").
+        $this->assertSame('', trim(analyzeJapaneseText('モノシリメガネ')['english']));
+        $this->assertSame('', trim(analyzeJapaneseText('ドリーマーズビート')['english']));
+    }
+
+    public function testAnalyzeJapaneseTextDoesNotSplitAliasKatakana(): void
+    {
+        $this->skipIfNoMecab();
+
+        $english = analyzeJapaneseText('プロジェクトセカイ カラフルステージ!')['english'];
+        $this->assertStringContainsString('Project Sekai', $english);
+        $this->assertStringNotContainsString('project chi', mb_strtolower($english));
+    }
+
+    public function testAnalyzeJapaneseTextKeepsCompoundKanjiGlosses(): void
+    {
+        $this->skipIfNoMecab();
+
+        $english = analyzeJapaneseText('幸福刑')['english'];
+        $this->assertStringContainsString('happiness', $english);
+        $this->assertStringContainsString('penalty', $english);
+    }
+
+    public function testAnalyzeJapaneseTextKeepsSingleKanjiNextToPersonName(): void
+    {
+        $this->skipIfNoMecab();
+
+        // "銀狼" berdiri sendiri walau bersebelahan dengan nama penyanyi.
+        $this->assertStringContainsString('silver wolf', analyzeJapaneseText('初音ミク×銀狼LV.999')['english']);
+        $this->assertStringNotContainsString('again', analyzeJapaneseText('又三郎')['english']);
+    }
 }
 
 /* reference build: MEeL-C5H5N5O [53d7e14930b8e361] */
