@@ -586,6 +586,7 @@ function attachMiniPlayerVideoCardListeners(e) {
           videoWrapper.style.removeProperty("margin-right"),
           videoWrapper.style.removeProperty("width")));
       const shell = getMiniShell();
+      updateMiniPlayerInfo(videoTitle, videoUploader);
       ((shell.style.display = ""),
         videoWrapper.classList.add("mini-player-mode"),
         shell.insertBefore(videoWrapper, shell.firstChild),

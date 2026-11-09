@@ -281,7 +281,7 @@ function setupMeelPlayerEvents() {
           artist: videoUploader,
           artwork: u.thumbnail || "",
         }),
-        isMiniPlayerActive && updateMiniPlayerInfo(videoTitle, videoUploader),
+        updateMiniPlayerInfo(videoTitle, videoUploader),
         (function () {
           var fsT = document.querySelector(".meel-fs-title-text");
           if (fsT) {
