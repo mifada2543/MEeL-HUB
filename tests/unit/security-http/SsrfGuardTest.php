@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers SsrfGuard
+ */
 class SsrfGuardTest extends TestCase
 {
     private ?SsrfGuard $guard = null;

@@ -3,7 +3,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Regresi: mini-player video lag + overlay reconnect merah terus-menerus
- * setelah kembali ke tab (pindah tab/workspace) dari background.
+ * setelah kembali ke tab (pindah tab/workspace) dari background, dan judul
+ * mini-player basi setelah auto-next / next (N).
  * @coversNothing
  */
 class MiniPlayerRecoveryTest extends TestCase
@@ -78,6 +79,43 @@ class MiniPlayerRecoveryTest extends TestCase
             $src,
             'Mini-player harus mempublikasikan URL watch asli ke window.__meelWatchUrl '
             . 'agar recovery tidak memakai URL "beranda".'
+        );
+    }
+
+    public function testSeamlessNextAlwaysSyncsMiniInfo(): void
+    {
+        $src = $this->read('/assets/js/video/watch/player-events.js');
+        $this->assertStringContainsString(
+            'updateMiniPlayerInfo(videoTitle, videoUploader)',
+            $src,
+            'skipToNextVideo wajib menyegarkan info mini-player.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/isMiniPlayerActive\s*&&\s*updateMiniPlayerInfo\s*\(/',
+            $src,
+            'Update info mini-player tidak boleh di-gate isMiniPlayerActive: shell yang '
+            . 'sedang di-hide tetap harus ikut diperbarui saat video berganti di mode penuh.'
+        );
+    }
+
+    public function testMiniEntryRefreshesCachedShellInfo(): void
+    {
+        $src = $this->read('/assets/js/video/watch/mini-player.js');
+        $this->assertMatchesRegularExpression(
+            '/getMiniShell\(\);[\s\S]{0,400}updateMiniPlayerInfo\(videoTitle, videoUploader\)/',
+            $src,
+            'Saat mini-player dibuka, info shell yang di-cache harus disegarkan dari '
+            . 'videoTitle/videoUploader, bukan hanya dari buildMiniInfo() saat shell dibuat.'
+        );
+    }
+
+    public function testMiniInfoWriterIsIdempotent(): void
+    {
+        $src = $this->read('/assets/js/video/watch/mini-player.js');
+        $this->assertMatchesRegularExpression(
+            '/function updateMiniPlayerInfo\([\s\S]{0,500}getElementById\("mini-info-title"\)/',
+            $src,
+            'updateMiniPlayerInfo harus tetap aman dipanggil walau shell belum ada.'
         );
     }
 }

@@ -95,7 +95,13 @@ class TestCountDocumentationTest extends TestCase
         $unitDir = MEEL_ROOT . '/tests/unit';
         $this->assertDirectoryExists($unitDir, 'tests/unit tidak ditemukan');
 
-        $files = glob($unitDir . '/*Test.php') ?: [];
+        $files = [];
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($unitDir, FilesystemIterator::SKIP_DOTS));
+        foreach ($it as $f) {
+            if ($f->isFile() && str_ends_with($f->getFilename(), 'Test.php')) {
+                $files[] = $f->getPathname();
+            }
+        }
         $this->assertGreaterThanOrEqual(
             40,
             count($files),
@@ -105,7 +111,13 @@ class TestCountDocumentationTest extends TestCase
 
         $integrationDir = MEEL_ROOT . '/tests/integration';
         if (is_dir($integrationDir)) {
-            $intFiles = glob($integrationDir . '/*Test.php') ?: [];
+            $intFiles = [];
+            $intIt = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($integrationDir, FilesystemIterator::SKIP_DOTS));
+            foreach ($intIt as $f) {
+                if ($f->isFile() && str_ends_with($f->getFilename(), 'Test.php')) {
+                    $intFiles[] = $f->getPathname();
+                }
+            }
             $this->assertGreaterThanOrEqual(
                 10,
                 count($intFiles),

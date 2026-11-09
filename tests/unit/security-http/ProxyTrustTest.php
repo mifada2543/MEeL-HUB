@@ -11,8 +11,8 @@ class ProxyTrustTest extends TestCase
     protected function setUp(): void
     {
         $this->origServer = $_SERVER;
-        require_once __DIR__ . '/../../modules/core/proxy.php';
-        require_once __DIR__ . '/../../auth/auth_helpers.php';
+        require_once MEEL_ROOT . '/modules/core/proxy.php';
+        require_once MEEL_ROOT . '/auth/auth_helpers.php';
     }
 
     protected function tearDown(): void
@@ -141,7 +141,7 @@ class ProxyTrustTest extends TestCase
         if (!defined('MEEL_TRUST_PROXY_HEADERS')) {
             define('MEEL_TRUST_PROXY_HEADERS', false);
         }
-        require_once __DIR__ . '/../../modules/core/proxy.php';
+        require_once MEEL_ROOT . '/modules/core/proxy.php';
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
         $_SERVER['HTTP_CF_CONNECTING_IP'] = '198.51.100.9';
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.9';

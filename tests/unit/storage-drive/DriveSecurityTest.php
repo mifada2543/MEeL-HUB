@@ -3,6 +3,9 @@ use PHPUnit\Framework\TestCase;
 
 require_once MEEL_ROOT . '/drive/DriveService.php';
 
+/**
+ * @covers DriveStorage
+ */
 class DriveSecurityTest extends TestCase
 {
     private string $baseDir = '';

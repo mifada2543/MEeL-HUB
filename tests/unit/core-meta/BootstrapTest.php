@@ -6,7 +6,7 @@ class BootstrapTest extends TestCase
 {
     private function probe(string $remoteAddr, string $serverName, string $prelude = ''): array
     {
-        $bootstrap = realpath(__DIR__ . '/../../modules/core/bootstrap.php');
+        $bootstrap = MEEL_ROOT . '/modules/core/bootstrap.php';
         $this->assertNotFalse($bootstrap, 'modules/core/bootstrap.php tidak ditemukan');
 
         $code = $prelude
@@ -26,15 +26,13 @@ class BootstrapTest extends TestCase
 
         return [$env, $debug === '1'];
     }
-
     /** @dataProvider baseUrlProvider */
     public function testBaseUrlFallbackFromProjectRoot(
         string $scriptName,
         string $documentRoot,
         string $expectedBase
     ): void {
-        $bootstrap = realpath(__DIR__ . '/../../modules/core/bootstrap.php');
-        $this->assertNotFalse($bootstrap, 'modules/core/bootstrap.php tidak ditemukan');
+        $bootstrap = MEEL_ROOT . '/modules/core/bootstrap.php';
 
         $code = '$_SERVER["SCRIPT_NAME"]=' . var_export($scriptName, true) . ';'
             . '$_SERVER["DOCUMENT_ROOT"]=' . var_export($documentRoot, true) . ';'
@@ -44,15 +42,13 @@ class BootstrapTest extends TestCase
         $output = [];
         $exit = 0;
         exec(PHP_BINARY . ' -d display_errors=0 -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
-
         $this->assertSame(0, $exit, 'Subprocess bootstrap gagal: ' . implode("\n", $output));
         $this->assertCount(1, $output, 'Output subprocess tidak valid: ' . implode("\n", $output));
         $this->assertSame($expectedBase, trim($output[0]));
     }
-
     public static function baseUrlProvider(): array
     {
-        $projectRoot = rtrim(str_replace('\\', '/', realpath(__DIR__ . '/../..')), '/');
+        $projectRoot = rtrim(str_replace('\\', '/', MEEL_ROOT), '/');
         $docRoot = dirname($projectRoot);
         $expected = '/' . basename($projectRoot);
 
@@ -68,7 +64,6 @@ class BootstrapTest extends TestCase
             ],
         ];
     }
-
     /** @dataProvider environmentProvider */
     public function testAppDebugFollowsEnvironment(
         string $remoteAddr,
@@ -79,22 +74,18 @@ class BootstrapTest extends TestCase
         bool $expectInvariant
     ): void {
         [$env, $debug] = $this->probe($remoteAddr, $serverName, $prelude);
-
         $this->assertSame($expectedEnv, $env);
         $this->assertSame($expectedDebug, $debug);
-
         if ($expectInvariant) {
             $this->assertSame($env === 'development', $debug);
         }
     }
-
     public static function environmentProvider(): array
     {
         return [
             'localhost auto-detect → development, debug ON' => [
                 '127.0.0.1', 'localhost', '', 'development', true, true,
             ],
-
             'server_name localhost DARI PENYERANG → tetap production' => [
                 '8.8.8.8', 'localhost', '', 'production', false, true,
             ],
@@ -116,5 +107,4 @@ class BootstrapTest extends TestCase
         ];
     }
 }
-
 /* reference build: MEeL-C3H7NO2S [5aa6205215a597ff] */

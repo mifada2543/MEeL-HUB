@@ -1,5 +1,8 @@
 <?php
 use PHPUnit\Framework\TestCase;
+/**
+ * @coversNothing
+ */
 class UserRoleCacheNotFoundTest extends TestCase
 {
     private const SUBJECT_ID = 1;

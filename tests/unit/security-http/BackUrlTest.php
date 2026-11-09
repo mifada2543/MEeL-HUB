@@ -2,6 +2,9 @@
 
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers meel_base_url_path
+ */
 class BackUrlTest extends TestCase
 {
     protected function setUp(): void

@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers video_thumbnail_sm_name
+ */
 class VideoThumbnailSmNameTest extends TestCase
 {
     protected function setUp(): void

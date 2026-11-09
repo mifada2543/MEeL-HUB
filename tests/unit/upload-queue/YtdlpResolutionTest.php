@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @coversNothing
+ */
 class YtdlpResolutionTest extends TestCase
 {
     private ?string $tempRoot = null;

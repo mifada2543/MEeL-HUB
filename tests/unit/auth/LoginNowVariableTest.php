@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @coversNothing
+ */
 class LoginNowVariableTest extends TestCase
 {
     private static function loginSource(): string

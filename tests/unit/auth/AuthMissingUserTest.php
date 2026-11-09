@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @coversNothing
+ */
 class AuthMissingUserTest extends TestCase
 {
     private static function source(): string

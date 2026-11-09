@@ -1,6 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
-require_once __DIR__ . '/support/MysqlFake.php';
+require_once MEEL_ROOT . '/tests/unit/support/MysqlFake.php';
 class FakeMysqliWithoutInTransaction extends FakeMysqli
 {
     /** @var string[] nama savepoint yang masih hidup di sesi ini */
@@ -45,6 +45,9 @@ class FakeMysqliRejectingEveryProbe extends FakeMysqli
         throw new mysqli_sql_exception('probe ditolak', 1227);
     }
 }
+/**
+ * @covers MeelCoin
+ */
 class MeelCoinTransactionProbeTest extends TestCase
 {
     protected function setUp(): void

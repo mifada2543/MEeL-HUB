@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @coversNothing
+ */
 class JmdictSchemaTest extends TestCase
 {
     private PDO $db;

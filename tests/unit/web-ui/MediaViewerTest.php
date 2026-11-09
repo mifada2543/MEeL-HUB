@@ -1,8 +1,11 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/support/MysqlFake.php';
+require_once MEEL_ROOT . '/tests/unit/support/MysqlFake.php';
 
+/**
+ * @coversNothing
+ */
 class MediaViewerTest extends TestCase
 {
     private FakeMysqli $conn;

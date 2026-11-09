@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers meel_pending_delete_lock
+ */
 class PendingDeleteLockTest extends TestCase
 {
     private string $pendingFile;

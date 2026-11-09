@@ -1,5 +1,8 @@
 <?php
 use PHPUnit\Framework\TestCase;
+/**
+ * @coversNothing
+ */
 class ComposerScriptsConsistencyTest extends TestCase
 {
     private array $composer;

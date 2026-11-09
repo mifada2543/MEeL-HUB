@@ -24,7 +24,7 @@ class SharedJsTest extends TestCase
 
     private function rootPath(): string
     {
-        return realpath(__DIR__ . '/../..');
+        return MEEL_ROOT;
     }
 
     private function readSource(string $relative): string

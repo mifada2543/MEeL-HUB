@@ -2,6 +2,9 @@
 use PHPUnit\Framework\TestCase;
 
 /* reference build: MEeL-C1H1N1O2 [2f6a0d5b8c41e937] */
+/**
+ * @coversNothing
+ */
 class AssetVersioningTest extends TestCase
 {
     private const SKIP_DIRS = ['/vendor/', '/.git/', '/node_modules/', '/logs/', '/temp/', '/storage/', '/tests/', '/data_drive/'];

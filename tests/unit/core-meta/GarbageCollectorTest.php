@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers GarbageCollector
+ */
 class GarbageCollectorTest extends TestCase
 {
     private const STALE_WINDOW = 1200;

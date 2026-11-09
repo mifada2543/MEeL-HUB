@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
  *
  * PERAWATAN: pola di sini sengaja TIDAK menyebut nama database apa pun.
  * Pola yang menyebut nama bisa diam-diam gagal cocok.
+ * @coversNothing
  */
 class SchemaDatabaseSelectionTest extends TestCase
 {

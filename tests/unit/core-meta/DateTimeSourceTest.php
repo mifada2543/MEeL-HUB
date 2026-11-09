@@ -4,9 +4,15 @@ use PHPUnit\Framework\TestCase;
 
 /* Satu sumber jam untuk seluruh aplikasi.*/
 
+/**
+ * @coversNothing
+ */
 class DateTimeSourceTest extends TestCase
 {
-    private const REPO_ROOT = __DIR__ . '/../..';
+    private static function repoRoot(): string
+    {
+        return MEEL_ROOT;
+    }
     private const APP_TIMEZONE = 'Asia/Jakarta';
     private const PHP_READ_COLUMNS = [
         'last_activity',
@@ -20,7 +26,7 @@ class DateTimeSourceTest extends TestCase
     ];
     private static function productionPhpFiles(): array
     {
-        $root = realpath(self::REPO_ROOT);
+        $root = realpath(self::repoRoot());
         $skip = ['/vendor/', '/.git/', '/tests/', '/logs/', '/temp/', '/storage/', '/node_modules/'];
         $files = [];
         $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
@@ -41,11 +47,11 @@ class DateTimeSourceTest extends TestCase
     }
     private static function relative(string $file): string
     {
-        return str_replace(realpath(self::REPO_ROOT) . '/', '', $file);
+        return str_replace(realpath(self::repoRoot()) . '/', '', $file);
     }
     public function testMeelNowIsDefinedAndMatchesPhpClock(): void
     {
-        require_once self::REPO_ROOT . '/modules/core/helpers/datetime.php';
+        require_once self::repoRoot() . '/modules/core/helpers/datetime.php';
         $this->assertTrue(function_exists('meel_now'), 'meel_now() harus tersedia');
         $this->assertTrue(function_exists('meel_now_ago'), 'meel_now_ago() harus tersedia');
         $before = time();
@@ -57,32 +63,32 @@ class DateTimeSourceTest extends TestCase
     }
     public function testMeelNowAgoSubtractsSeconds(): void
     {
-        require_once self::REPO_ROOT . '/modules/core/helpers/datetime.php';
+        require_once self::repoRoot() . '/modules/core/helpers/datetime.php';
         $expected = date('Y-m-d H:i:s', time() - 600);
         $this->assertSame($expected, meel_now_ago(600));
     }
     public function testApplicationTimezoneIsSetUnconditionally(): void
     {
-        $src = (string) file_get_contents(self::REPO_ROOT . '/modules/core/bootstrap.php');
+        $src = (string) file_get_contents(self::repoRoot() . '/modules/core/bootstrap.php');
         $this->assertStringContainsString('date_default_timezone_set(', $src, 'bootstrap.php harus menyetel zona waktu aplikasi');
         $this->assertDoesNotMatchRegularExpression('/if\s*\(\s*!\s*ini_get\s*\(\s*[\'"]date\.timezone[\'"]\s*\)\s*\{[^}]*date_default_timezone_set/', $src, 'Zona waktu harus diset tanpa syarat — `ini_get("date.timezone")` selalu ' . 'mengembalikan "UTC" karena itu default PHP, jadi guard bersyarat tidak pernah jalan');
     }
     public function testApplicationTimezoneIsTheConfiguredOne(): void
     {
-        require_once self::REPO_ROOT . '/modules/core/bootstrap.php';
+        require_once self::repoRoot() . '/modules/core/bootstrap.php';
         $expected = defined('MEEL_TIMEZONE') ? (string) MEEL_TIMEZONE : self::APP_TIMEZONE;
         $this->assertSame($expected, date_default_timezone_get(), 'Zona waktu runtime harus sama dengan zona waktu aplikasi');
         $this->assertSame($expected, self::APP_TIMEZONE, 'Default zona waktu aplikasi harus tetap Asia/Jakarta');
     }
     public function testDatabaseSessionTimezoneIsAlignedWithPhp(): void
     {
-        $src = (string) file_get_contents(self::REPO_ROOT . '/auth/config.php');
+        $src = (string) file_get_contents(self::repoRoot() . '/auth/config.php');
         $this->assertStringContainsString('SET time_zone', $src, 'auth/config.php harus menyamakan time_zone sesi MySQL dengan offset PHP');
         $this->assertStringContainsString("date('P')", $src, 'Offset PHP yang dipakai harus dihitung, bukan ditulis manual');
     }
     public function testTestHarnessAlsoAlignsTheDatabaseSessionTimezone(): void
     {
-        $src = (string) file_get_contents(self::REPO_ROOT . '/tests/DbTestHelper.php');
+        $src = (string) file_get_contents(self::repoRoot() . '/tests/DbTestHelper.php');
         $this->assertStringContainsString('SET time_zone', $src, 'tests/DbTestHelper.php harus menyamakan time_zone sesi MySQL dengan offset PHP');
         $this->assertStringContainsString("date('P')", $src, 'Offset PHP yang dipakai harness uji harus dihitung, bukan ditulis manual');
     }

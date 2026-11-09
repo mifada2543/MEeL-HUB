@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @coversNothing
+ */
 class PhpVersionDocumentationTest extends TestCase
 {
     public function testReadmeAdvertisesPhp82(): void

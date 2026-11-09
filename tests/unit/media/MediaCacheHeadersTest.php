@@ -2,6 +2,9 @@
 use PHPUnit\Framework\TestCase;
 
 /* reference build: MEeL-C1H1N1O2 [2f6a0d5b8c41e937] */
+/**
+ * @covers meel_cache_is_fresh
+ */
 class MediaCacheHeadersTest extends TestCase
 {
     private const ETAG = '"abcdef0123456789abcdef0123456789"';

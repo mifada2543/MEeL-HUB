@@ -1,8 +1,11 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-require_once dirname(__DIR__, 2) . '/modules/auth/ValidatingProxy.php';
+require_once MEEL_ROOT . '/modules/auth/ValidatingProxy.php';
 
+/**
+ * @covers ValidatingProxy
+ */
 class ValidatingProxyTest extends TestCase
 {
     private ?ValidatingProxy $proxy = null;

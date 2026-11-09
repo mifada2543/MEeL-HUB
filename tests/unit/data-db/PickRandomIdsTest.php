@@ -1,9 +1,12 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/support/MysqlFake.php';
+require_once MEEL_ROOT . '/tests/unit/support/MysqlFake.php';
 
 /* reference build: MEeL-C1H1N1O2 [2f6a0d5b8c41e937] */
+/**
+ * @covers meel_pick_random_ids
+ */
 class PickRandomIdsTest extends TestCase
 {
     protected function setUp(): void

@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @coversNothing
+ */
 class InteractionsFkSourceTest extends TestCase
 {
     public function testSchemaHasInteractionsForeignKeys(): void

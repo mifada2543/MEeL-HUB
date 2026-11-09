@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers meel_pending_delete_allowed_path
+ */
 class PendingDeleteHelperTest extends TestCase
 {
     private string $pendingFile;

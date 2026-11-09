@@ -1,5 +1,8 @@
 <?php
 use PHPUnit\Framework\TestCase;
+/**
+ * @coversNothing
+ */
 class EnginePhaseJsTest extends TestCase
 {
     private static function nodeAvailable(): bool

@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers RateLimiter
+ */
 class RegisterRateLimitTest extends TestCase
 {
     private string $origStorageDir;

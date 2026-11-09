@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers meel_is_default_thumbnail
+ */
 class DefaultThumbnailGuardTest extends TestCase
 {
     protected function setUp(): void

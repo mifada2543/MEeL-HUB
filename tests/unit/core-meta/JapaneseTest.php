@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers meel_japanese_transliterate_slug
+ */
 class JapaneseTest extends TestCase
 {
     protected function setUp(): void

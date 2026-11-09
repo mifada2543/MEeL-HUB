@@ -1,12 +1,15 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers Notification
+ */
 class NotificationRetentionTest extends TestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
-        require_once __DIR__ . '/support/MysqlFake.php';
+        require_once MEEL_ROOT . '/tests/unit/support/MysqlFake.php';
         require_once MEEL_ROOT . '/modules/core/Notification.php';
     }
 

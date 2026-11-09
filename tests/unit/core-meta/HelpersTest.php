@@ -133,10 +133,9 @@ class HelpersTest extends TestCase
 
     public function testBaseUrlFallbackFromProjectRoot(): void
     {
-        $helpers = realpath(__DIR__ . '/../../modules/core/helpers.php');
-        $this->assertNotFalse($helpers, 'modules/core/helpers.php tidak ditemukan');
+        $helpers = MEEL_ROOT . '/modules/core/helpers.php';
 
-        $projectRoot = rtrim(str_replace('\\', '/', realpath(__DIR__ . '/../..')), '/');
+        $projectRoot = rtrim(str_replace('\\', '/', MEEL_ROOT), '/');
         $docRoot = dirname($projectRoot);
         $expected = '/' . basename($projectRoot);
 

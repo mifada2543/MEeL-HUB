@@ -1,6 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @coversNothing
+ */
 class UpscalerConfirmTest extends TestCase
 {
     private static function nodeAvailable(): bool
