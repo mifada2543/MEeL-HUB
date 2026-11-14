@@ -65,7 +65,9 @@ class VideoThumbnailFallbackTest extends TestCase
         $path = $this->workDir . '/sumber.jpg';
         $output = [];
         $code = 1;
-        exec('/usr/bin/ffmpeg -y -f lavfi -i color=c=red:s=32x32 -frames:v 1 '
+        exec(escapeshellarg(meel_ffmpeg_bin()) . ' -v error -y -i '
+            . escapeshellarg(MEEL_ROOT . '/assets/img/video0.webp')
+            . ' -vf scale=32:32 -frames:v 1 -c:v mjpeg '
             . escapeshellarg($path) . ' 2>&1', $output, $code);
         $this->assertSame(0, $code, implode("\n", $output));
         $this->assertSame('image/jpeg', getimagesize($path)['mime']);
@@ -93,18 +95,18 @@ class VideoThumbnailFallbackTest extends TestCase
     }
     private function buildShortClip(): string
     {
-        $system = '/usr/bin/ffmpeg';
-        if (!is_executable($system)) {
-            return '';
-        }
         $clip = $this->workDir . '/klip.mp4';
-        $cmd = escapeshellarg($system)
-            . ' -y -f lavfi -i testsrc=size=320x240:rate=25:duration=0.4'
-            . ' -c:v libx264 -pix_fmt yuv420p '
+        // image2 + MJPEG tersedia di bundled lite; lavfi/libx264 tidak.
+        $cmd = escapeshellarg(meel_ffmpeg_bin())
+            . ' -v error -y -f image2 -loop 1 -framerate 25 -i '
+            . escapeshellarg(MEEL_ROOT . '/assets/img/video0.webp')
+            . ' -t 0.4 -vf scale=320:240 -c:v mjpeg -pix_fmt yuvj420p '
             . escapeshellarg($clip)
             . ' 2>&1';
-        @shell_exec($cmd);
-        return is_file($clip) && filesize($clip) > 0 ? $clip : '';
+        exec($cmd, $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+        $this->assertFileExists($clip);
+        return $clip;
     }
     public function testDownloaderNoLongerCopiesRawBytesIntoWebp(): void
     {
@@ -164,9 +166,6 @@ class VideoThumbnailFallbackTest extends TestCase
     public function testShortClipYieldsThumbnailAtTimeZero(): void
     {
         $clip = $this->buildShortClip();
-        if ($clip === '') {
-            $this->markTestSkipped('ffmpeg sistem tidak tersedia untuk membuat klip uji.');
-        }
         $zero = $this->workDir . '/nol.webp';
         $this->assertTrue(
             meel_ffmpeg_thumbnail_webp(meel_ffmpeg_bin(), $clip, $zero, 1280, '-ss 00:00:00 -vframes 1', ''),
@@ -187,9 +186,6 @@ class VideoThumbnailFallbackTest extends TestCase
     public function testServiceExtractsFrameFromShortClipWhenThumbnailImageFails(): void
     {
         $clip = $this->buildShortClip();
-        if ($clip === '') {
-            $this->markTestSkipped('ffmpeg sistem tidak tersedia untuk membuat klip uji.');
-        }
         $bad = $this->workDir . '/rusak.jpg';
         file_put_contents($bad, 'bukan gambar');
         $result = $this->stageThumbnail($bad, $this->workDir . '/', 'klip.webp', $clip);

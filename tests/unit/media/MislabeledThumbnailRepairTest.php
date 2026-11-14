@@ -22,8 +22,11 @@ class MislabeledThumbnailRepairTest extends TestCase
         mkdir($dir . '/video/upload/thumbnail', 0700, true);
         try {
             $path = $dir . '/video/upload/thumbnail/broken_sm.webp';
-            exec('/usr/bin/ffmpeg -v error -y -f lavfi -i testsrc=size=320x240:duration=0.1 -frames:v 1 -pix_fmt yuvj420p ' . escapeshellarg($dir . '/source.jpg'), $out, $code);
-            $this->assertSame(0, $code);
+            exec(escapeshellarg(meel_ffmpeg_bin()) . ' -v error -y -i '
+                . escapeshellarg(MEEL_ROOT . '/assets/img/video0.webp')
+                . ' -vf scale=320:240 -frames:v 1 -c:v mjpeg -pix_fmt yuvj420p '
+                . escapeshellarg($dir . '/source.jpg') . ' 2>&1', $out, $code);
+            $this->assertSame(0, $code, implode("\n", $out));
             copy($dir . '/source.jpg', $path);
             chmod($path, 0444);
             touch($path, time());

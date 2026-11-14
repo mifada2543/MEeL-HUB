@@ -39,9 +39,10 @@ class VideoShortClipThumbnailTest extends TestCase
         $clip = $this->dir . 'source.mp4';
         $output = [];
         $status = -1;
-        exec('/usr/bin/ffmpeg -v error -y -f lavfi -i '
-            . escapeshellarg('testsrc=size=320x240:rate=25:duration=' . $duration)
-            . ' -c:v libx264 -pix_fmt yuv420p ' . escapeshellarg($clip) . ' 2>&1', $output, $status);
+        exec(escapeshellarg(meel_ffmpeg_bin()) . ' -v error -y -f image2 -loop 1 -framerate 25 -i '
+            . escapeshellarg(MEEL_ROOT . '/assets/img/video0.webp')
+            . ' -t ' . escapeshellarg($duration)
+            . ' -vf scale=320:240 -c:v mjpeg -pix_fmt yuvj420p ' . escapeshellarg($clip) . ' 2>&1', $output, $status);
         $this->assertSame(0, $status, implode("\n", $output));
         return $clip;
     }
