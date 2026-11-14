@@ -466,7 +466,12 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
 - `music_thumbnail_url($thumbnail)` — Resolve thumbnail
 - `video_thumbnail_sm_name(?string): string` — Turunkan nama varian 256px dari nama thumbnail
 - `video_thumbnail_sm(?string): string` — Sama seperti di atas, tapi hanya mengembalikan nama bila file benar-benar ada
-- `meel_is_default_thumbnail(string): bool` — True bila nama itu `default_thumb.jpg`/`default_thumb.webp` (case-insensitive, aman terhadap path)
+- `meel_is_default_thumbnail(string $name): bool` — True bila nama itu `default_thumb.jpg`/`default_thumb.webp` (case-insensitive, aman terhadap path)
+- `meel_default_thumbnail_name(): string` — Nama file fallback yang disimpan di database (`default_thumb.webp`)
+- `meel_default_thumbnail_asset(): string` — Path absolut sumber fallback yang dipaketkan di repo (`assets/img/video0.webp`)
+- `meel_default_thumbnail_path(string $module = 'video'): string` — Path absolut fallback di dalam storage modul
+- `meel_ensure_default_thumbnail(string $module = 'video'): bool` — Seed fallback ke storage bila belum ada (idempoten, file valid tidak pernah ditimpa)
+- `meel_resolve_fallback_thumbnail(string $module = 'video'): string` — Nama fallback hanya bila file-nya benar-benar ada, selain itu string kosong
 - `get_user_usage($username)` — Usage drive
 - `get_user_role(mysqli, int): string` — 3-level cache
 - `invalidate_user_role_cache()`
@@ -551,7 +556,7 @@ varian perlu diturunkan:
 |---|---|---|
 | Thumbnail utama | `{folder_name}_thumb.webp` | `Uploader.php` |
 | Varian 256px (sm) | `{folder_name}_thumb_sm.webp` | `Uploader.php` |
-| Default (fallback) | `default_thumb.webp` / `default_thumb.jpg` | tidak ikut dihapus |
+| Default (fallback) | `default_thumb.webp` / `default_thumb.jpg` | di-seed installer + runtime, tidak ikut dihapus |
 
 Tiga hal yang sering bikin salah paham:
 
@@ -567,6 +572,34 @@ Tiga hal yang sering bikin salah paham:
    thumbnail di `admin/edit-video.php`, hapus media di `fun-manage.php`, dan
    rollback di `Uploader.php`) meng-cek `meel_is_default_thumbnail()` dulu.
    Menghapus default thumbnail akan mematikan seluruh fallback gambar.
+
+#### Fallback thumbnail yang benar-benar ada
+
+Nama `default_thumb.webp` hanya berguna kalau file-nya benar-benar ada di
+storage. Storage video yang dikonfigurasi tidak pernah berisi file itu, sehingga
+video yang thumbnail-nya gagal dibuat menyimpan referensi ke file yang tidak
+ada — dan gambar fallback-nya tidak pernah tampil.
+
+Sekarang file fallback di-seed ke `video/upload/thumbnail/default_thumb.webp`
+dari `assets/img/video0.webp` (WebP 1280x720 yang sudah dipakai sebagai fallback
+Open Graph di halaman watch):
+
+- **Saat instalasi**, `lib/install/storage.sh` menyalinnya ke direktori
+  thumbnail video. Penyalinan lewat berkas sementara di direktori tujuan lalu
+  `mv`, jadi rename-nya atomik dan instalasi yang terputus tidak meninggalkan
+  file separuh. File yang sudah ada tidak pernah ditimpa.
+- **Saat runtime**, `meel_ensure_default_thumbnail()` melakukan hal yang sama
+  secara lazy, hanya bila file-nya belum ada.
+
+`meel_resolve_fallback_thumbnail()` hanya mengembalikan nama `default_thumb.webp`
+bila file itu benar-benar ada dan valid; kalau tidak, hasilnya string kosong.
+Jadi ketika thumbnail tidak bisa dibuat, **nama thumbnail disimpan kosong** —
+bukan referensi ke file yang absen — dan lapisan tampilan memakai placeholder
+bawaan untuk nama yang kosong.
+
+Aturan varian kecil (`_sm`) tetap sama seperti sebelumnya: hanya
+`video.thumbnail` yang disimpan ke database, dan keberadaan varian `_sm` dicek
+via `is_file()`.
 
 ### 9. `modules/core/CommentRenderer.php`
 

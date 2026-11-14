@@ -1,11 +1,8 @@
 <?php
 /* reference build: MEeL-C9H11NO2 [2687158f36267302] */
-
 use PHPUnit\Framework\TestCase;
-
 require_once MEEL_ROOT . '/modules/autoload.php';
 require_once MEEL_ROOT . '/modules/core/helpers.php';
-
 /**
  * @covers meel_magic_extension_ok
  * @covers meel_sanitize_upload_filename
@@ -14,13 +11,11 @@ require_once MEEL_ROOT . '/modules/core/helpers.php';
 class UploadValidationTest extends TestCase
 {
     private string $tmp = '';
-
     protected function setUp(): void
     {
         $this->tmp = MEEL_ROOT . '/temp/upload_val_test_' . bin2hex(random_bytes(4));
         @mkdir($this->tmp, 0755, true);
     }
-
     protected function tearDown(): void
     {
         if (is_dir($this->tmp)) {
@@ -34,14 +29,12 @@ class UploadValidationTest extends TestCase
             @rmdir($this->tmp);
         }
     }
-
     private function fileWith(string $bytes): string
     {
         $p = $this->tmp . '/' . bin2hex(random_bytes(4));
         file_put_contents($p, $bytes);
         return $p;
     }
-
     public function testAudioMagicBytesAccepted(): void
     {
         $cases = [
@@ -56,25 +49,36 @@ class UploadValidationTest extends TestCase
             $this->assertSame('', meel_magic_extension_ok($this->fileWith($bytes), $ext, 'audio'), "ext=$ext");
         }
     }
-
     public function testAudioRejectsPhpPayload(): void
     {
         $err = meel_magic_extension_ok($this->fileWith('<?php system($_GET[0]); ?>'), 'mp3', 'audio');
         $this->assertNotSame('', $err);
     }
-
+    /** @dataProvider mismatchedAudioHeaders */
+    public function testAudioHeaderMustMatchExtension(string $bytes, string $ext): void
+    {
+        $this->assertNotSame('', meel_magic_extension_ok($this->fileWith($bytes), $ext, 'audio'));
+    }
+    public static function mismatchedAudioHeaders(): array
+    {
+        return [
+            ["fLaC\x00\x00\x00\x22", 'ogg'],
+            ["fLaC\x00\x00\x00\x22", 'opus'],
+            ["RIFF\x24\x00\x00\x00WAVE", 'ogg'],
+            ["OggS\x00\x02", 'flac'],
+            ["ID3\x04\x00\x00\x00\x00\x00\x00", 'wav'],
+        ];
+    }
     public function testVideoMagicBytesAccepted(): void
     {
         $this->assertSame('', meel_magic_extension_ok($this->fileWith("\x1A\x45\xDF\xA3\x01"), 'mkv', 'video'));
         $this->assertSame('', meel_magic_extension_ok($this->fileWith("\x00\x00\x00\x18ftypisom"), 'mp4', 'video'));
     }
-
     public function testVideoRejectsHtml(): void
     {
         $err = meel_magic_extension_ok($this->fileWith('<html><body>hi</body></html>'), 'mp4', 'video');
         $this->assertNotSame('', $err);
     }
-
     public function testImageMagicBytesAccepted(): void
     {
         $this->assertSame('', meel_magic_extension_ok($this->fileWith("\xFF\xD8\xFF\xE0\x00"), 'jpg', 'image'));
@@ -82,20 +86,17 @@ class UploadValidationTest extends TestCase
         $this->assertSame('', meel_magic_extension_ok($this->fileWith("GIF89a\x01\x00"), 'gif', 'image'));
         $this->assertSame('', meel_magic_extension_ok($this->fileWith("RIFF\x10\x00\x00\x00WEBPVP8 "), 'webp', 'image'));
     }
-
     public function testImageRejectsHtml(): void
     {
         $err = meel_magic_extension_ok($this->fileWith('<script>alert(1)</script>'), 'png', 'image');
         $this->assertNotSame('', $err);
     }
-
     public function testPdfMagicBytes(): void
     {
         $this->assertSame('', meel_magic_extension_ok($this->fileWith("%PDF-1.7\n%"), 'pdf', 'pdf'));
         $err = meel_magic_extension_ok($this->fileWith('#!/bin/sh\nrm -rf /'), 'pdf', 'pdf');
         $this->assertNotSame('', $err);
     }
-
     public function testArchiveMagicBytes(): void
     {
         $this->assertSame('', meel_magic_extension_ok($this->fileWith("PK\x03\x04\x14\x00"), 'zip', 'archive'));
@@ -103,7 +104,6 @@ class UploadValidationTest extends TestCase
         $err = meel_magic_extension_ok($this->fileWith('MZ\x90\x00'), 'zip', 'archive');
         $this->assertNotSame('', $err);
     }
-
     public function testSanitizeFilenameRemovesTraversal(): void
     {
         $this->assertSame('safe_name.jpg', meel_sanitize_upload_filename('../../safe_name.jpg'));

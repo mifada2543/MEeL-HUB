@@ -14,10 +14,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi mengikut
 
 ### Fixed
 
+- **Thumbnail video yang gagal dibuat tidak lagi menunjuk file yang tidak ada:** video yang thumbnail-nya tidak berhasil diproses menyimpan nama thumbnail kosong, bukan referensi ke `default_thumb.webp` yang belum pernah ada di storage. Fallback kini benar-benar di-seed dan nama yang disimpan selalu bisa resolve.
 - **Installer dari ZIP tidak lagi gagal di verifikasi akhir:** health check deployment dipindah ke `tools/check_deploy.php` dan ikut paket core/full. `tests/` tetap tidak masuk paket utama, tetapi tersedia sebagai asset rilis opsional `MEeL-HUB-tests-*.zip`.
 
 ### Added
 
+- **Installer menyeed thumbnail default video:** gambar fallback bawaan (`assets/img/video0.webp`) disalin ke `video/upload/thumbnail/default_thumb.webp` saat instalasi, sehingga gambar fallback langsung tersedia setelah instalasi selesai.
 - **Pemilihan paket rilis:** tag anotasi dapat memuat baris `packages: ...` sehingga workflow hanya membangun/mengunggah paket yang dipilih. `scripts/ci/build-tests-package.sh` membangun asset tests opsional.
 
 ## [2.2.2] - 2026-10-31

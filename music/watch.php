@@ -232,12 +232,11 @@ session_write_close();
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
                         <button type="button" id="meel-share-btn"
-                            class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer bg-white/[.04] border border-white/[.06] text-gray-400 hover:text-orange-400 hover:border-orange-500/30">
+                            class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300 cursor-pointer"
+                            title="Bagikan lagu">
                             <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Bagikan
                         </button>
-                    </div>
-                    <?php if (isset($_SESSION['username'])): ?>
-                        <div class="flex items-center gap-2 flex-wrap">
+                        <?php if (isset($_SESSION['username'])): ?>
                             <?php
                             $like_dislike_media_id = $id;
                             $like_dislike_media_type = 'music';
@@ -258,8 +257,8 @@ session_write_close();
                                     <i data-lucide="edit" class="w-3.5 h-3.5"></i> Edit
                                 </a>
                             <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
             <?php if (!empty($v['description'])): ?>

@@ -475,6 +475,14 @@ Functions are wrapped in `function_exists()` guard and split across per-domain s
 - `time_ago($timestamp)` — Relative time (ID locale)
 - `format_bytes($bytes)` — Human-readable file size
 - `music_thumbnail_url($thumbnail)` — Thumbnail path resolver
+- `video_thumbnail_sm_name(?string): string` — Derives the 256px variant name from a thumbnail name
+- `video_thumbnail_sm(?string): string` — Same as above, but returns the name only when the file really exists
+- `meel_is_default_thumbnail(string $name): bool` — True when the name is `default_thumb.jpg`/`default_thumb.webp` (case-insensitive, path-safe)
+- `meel_default_thumbnail_name(): string` — Name of the fallback file that gets persisted (`default_thumb.webp`)
+- `meel_default_thumbnail_asset(): string` — Absolute path of the packaged fallback source (`assets/img/video0.webp`)
+- `meel_default_thumbnail_path(string $module = 'video'): string` — Absolute path of the fallback inside the module storage
+- `meel_ensure_default_thumbnail(string $module = 'video'): bool` — Seeds the fallback into storage when missing (idempotent, never overwrites a valid file)
+- `meel_resolve_fallback_thumbnail(string $module = 'video'): string` — Fallback name only when the file really exists, otherwise an empty string
 - `get_user_usage($username)` — User drive usage
 - `get_user_role(mysqli $conn, int $user_id): string` — Role with 3-level cache
 - `invalidate_user_role_cache()` — Force refresh role cache
@@ -560,7 +568,7 @@ be derived:
 |---|---|---|
 | Main thumbnail | `{folder_name}_thumb.webp` | `Uploader.php` |
 | 256px variant (sm) | `{folder_name}_thumb_sm.webp` | `Uploader.php` |
-| Default (fallback) | `default_thumb.webp` / `default_thumb.jpg` | never deleted |
+| Default (fallback) | `default_thumb.webp` / `default_thumb.jpg` | seeded by the installer + at runtime, never deleted |
 
 Three things that are easy to get wrong:
 
@@ -577,6 +585,35 @@ Three things that are easy to get wrong:
    replacement in `admin/edit-video.php`, media deletion in `fun-manage.php`,
    and rollback in `Uploader.php`) checks `meel_is_default_thumbnail()` first.
    Deleting the default thumbnail would break the image fallback entirely.
+
+#### A fallback thumbnail that actually exists
+
+The name `default_thumb.webp` is only useful when the file itself exists in
+storage. The configured video storage never contained that file, so a video
+whose thumbnail could not be produced stored a reference to a file that was not
+there — and the fallback image never rendered.
+
+The fallback file is now seeded into `video/upload/thumbnail/default_thumb.webp`
+from `assets/img/video0.webp` (a 1280x720 WebP that is already used as the Open
+Graph fallback on the watch page):
+
+- **At install time**, `lib/install/storage.sh` copies it into the video
+  thumbnail directory. The copy goes through a temporary file in the
+  destination directory followed by `mv`, so the rename is atomic and an
+  interrupted install never leaves a half-written file. An existing file is
+  never overwritten.
+- **At runtime**, `meel_ensure_default_thumbnail()` does the same lazily, and
+  only when the file is not there yet.
+
+`meel_resolve_fallback_thumbnail()` returns the name `default_thumb.webp` only
+when that file really exists and is valid; otherwise it returns an empty
+string. So when a thumbnail cannot be produced, the **thumbnail name is stored
+empty** — instead of pointing at an absent file — and the display layer renders
+the packaged placeholder for an empty name.
+
+The small-variant (`_sm`) rule is unchanged: only `video.thumbnail` is
+persisted to the database, and the existence of the `_sm` variant is probed via
+`is_file()`.
 
 ### 9. `modules/core/CommentRenderer.php`
 
