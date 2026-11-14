@@ -450,8 +450,7 @@ class Uploader
             if (!meel_image_source_ok($files['thumbnail']['tmp_name'])) {
                 error_log("[MEeL] Music upload: thumbnail user ditolak (format tidak didukung): " . ($files['thumbnail']['name'] ?? 'unknown'));
             } else {
-                $t_clean = getRomajiName(pathinfo($files['thumbnail']['name'], PATHINFO_FILENAME));
-                $thumb_candidate = $this->getUniqueFilename($t_clean, "thumb.webp", $thumb_dir);
+                $thumb_candidate = $this->getUniqueFilename($thumb_base, "thumb.webp", $thumb_dir);
                 $abs_out = $thumb_dir . $thumb_candidate;
                 if (meel_convert_image_to_webp($files['thumbnail']['tmp_name'], $abs_out, 256, 256, false, $this->ffmpeg_bin, $this->getEnvPrefix())) {
                     $thumb_name = $thumb_candidate;

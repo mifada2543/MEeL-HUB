@@ -1076,6 +1076,11 @@ class DownloadService extends TranscoderBase
      * Jalankan beberapa proses ffmpeg sekaligus lalu awasi sampai semuanya
      * selesai.
      *
+     * Tetap sebagai method, bukan kelas runner terpisah, karena pencatatan PID
+     * dan penghentian proses anak harus memakai instance TranscoderBase yang
+     * sama agar timeout dan cleanup tetap melacak seluruh proses pekerjaan ini.
+     * Pemisahan dari finalizeVideo() menjaga orkestrasi terpisah dari loop proses.
+     *
      * @param array<string, array{
      *     cmd: array<int, string>,      // argumen untuk proc_open
      *     env: array<string, string>,   // environment untuk proc_open
