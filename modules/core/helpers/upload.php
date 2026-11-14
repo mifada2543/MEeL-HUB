@@ -24,11 +24,6 @@ if (!function_exists('meel_read_magic_bytes')) {
     }
 }
 if (!function_exists('meel_upload_error_message')) {
-    /**
-     * Terjemahkan kode error PHP upload menjadi pesan yang bisa ditampilkan.
-     * Tanpa ini, UPLOAD_ERR_INI_SIZE / FORM_SIZE / PARTIAL hanya menghasilkan
-     * error kosong dan pengguna tidak tahu mengapa thumbnail tidak berubah.
-     */
     function meel_upload_error_message(int $code, string $label = 'File'): string
     {
         switch ($code) {
@@ -52,11 +47,6 @@ if (!function_exists('meel_upload_error_message')) {
     }
 }
 if (!function_exists('meel_post_upload_too_large')) {
-    /**
-     * Deteksi POST yang dibuang PHP karena melebihi post_max_size.
-     * Pada kasus ini $_POST dan $_FILES kosong, sehingga tanpa pengecekan
-     * halaman edit hanya reload tanpa pesan error.
-     */
     function meel_post_upload_too_large(): bool
     {
         if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -82,13 +72,16 @@ if (!function_exists('meel_magic_extension_ok')) {
             return $ok ? '' : 'File tidak valid sebagai video (magic bytes mismatch).';
         }
         if ($mediaKind === 'audio') {
-            if (str_starts_with($head, "OggS")) return '';
-            if (str_starts_with($head, "fLaC")) return '';
-            if (str_starts_with($head, "RIFF") && substr($head, 8, 4) === 'WAVE') return '';
-            if (str_starts_with($head, "ID3")) return '';
-            if (strlen($head) >= 2 && ((ord($head[0]) === 0xFF) && (ord($head[1]) & 0xE0) === 0xE0)) return '';
-            if (strlen($head) >= 8 && substr($head, 4, 4) === 'ftyp') return '';
-            return 'File tidak valid sebagai audio (magic bytes mismatch).';
+            $ok = match ($ext) {
+                'ogg', 'opus' => str_starts_with($head, 'OggS'),
+                'flac' => str_starts_with($head, 'fLaC'),
+                'wav' => str_starts_with($head, 'RIFF') && substr($head, 8, 4) === 'WAVE',
+                'mp3' => str_starts_with($head, 'ID3')
+                    || (strlen($head) >= 2 && ord($head[0]) === 0xFF && (ord($head[1]) & 0xE0) === 0xE0),
+                'm4a' => strlen($head) >= 8 && substr($head, 4, 4) === 'ftyp',
+                default => false,
+            };
+            return $ok ? '' : 'Ekstensi audio tidak sesuai dengan isi file (magic bytes mismatch).';
         }
         if ($mediaKind === 'image') {
             $ok = str_starts_with($head, "\xFF\xD8\xFF")
@@ -287,15 +280,11 @@ if (!function_exists('meel_ffmpeg_thumbnail_webp')) {
         $cmd .= ' -vf ' . escapeshellarg("scale='min({$max_width},iw)':-1")
             . ' -c:v libwebp -q:v 78 ' . escapeshellarg($dst) . ' 2>&1';
         @shell_exec($cmd);
-        // Verifikasi hasil: file yang hanya setengah tertulis tidak dianggap sukses.
         return meel_is_valid_webp($dst);
     }
 }
 if (!function_exists('meel_image_mime_allowlist')) {
     /**
-     * Satu-satunya sumber kebenaran format gambar yang boleh diunggah
-     * sebagai thumbnail/cover (upload musik, video, buku, dan halaman edit).
-     *
      * @return string[]
      */
     function meel_image_mime_allowlist(): array
@@ -328,7 +317,6 @@ if (!function_exists('meel_image_mime_of')) {
         if (is_array($info) && !empty($info['mime'])) {
             return strtolower((string) $info['mime']);
         }
-        // getimagesize() tidak mengenali semua format (mis. AVIF pada PHP lama).
         $finfo = @finfo_open(FILEINFO_MIME_TYPE);
         if (!$finfo) {
             return '';
@@ -339,10 +327,6 @@ if (!function_exists('meel_image_mime_of')) {
     }
 }
 if (!function_exists('meel_image_source_ok')) {
-    /**
-     * Validasi file gambar sumber (upload) memakai getimagesize(), bukan
-     * hanya magic bytes, supaya ICO/BMP/AVIF ikut tervalidasi.
-     */
     function meel_image_source_ok(string $path): bool
     {
         if (!is_file($path) || filesize($path) < 16) {
@@ -356,10 +340,6 @@ if (!function_exists('meel_image_source_ok')) {
     }
 }
 if (!function_exists('meel_is_valid_webp')) {
-    /**
-     * Pastikan file hasil konversi benar-benar WebP dengan dimensi valid,
-     * supaya tidak ada byte PNG/JPEG yang tersimpan dengan ekstensi .webp.
-     */
     function meel_is_valid_webp(string $path): bool
     {
         if (!is_file($path) || filesize($path) < 16) {
@@ -375,18 +355,11 @@ if (!function_exists('meel_is_valid_webp')) {
     }
 }
 if (!function_exists('meel_convert_image_to_webp')) {
-    /**
-     * Convert image to WebP using the configured FFmpeg binary.
-     * System ffmpeg is an explicit opt-in via MEEL_FFMPEG_ALLOW_SYSTEM, not a
-     * silent fallback when the bundled binary is broken. ImageMagick remains
-     * the last image-only fallback.
-     */
     function meel_convert_image_to_webp(string $src, string $dst, int $max_w, int $max_h, bool $pad = false, string $ffmpeg_bin = '', string $env_prefix = ''): bool
     {
         $vf = $pad
             ? "scale={$max_w}:{$max_h}:force_original_aspect_ratio=decrease,pad={$max_w}:{$max_h}:(ow-iw)/2:(oh-ih)/2:color=black"
             : "scale='min({$max_w},iw)':-1";
-
         $bins = [];
         if ($ffmpeg_bin !== '') {
             $bins[] = $ffmpeg_bin;
@@ -400,7 +373,6 @@ if (!function_exists('meel_convert_image_to_webp')) {
             $bins = array_merge($bins, ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg']);
         }
         $bins = array_unique(array_filter($bins));
-
         foreach ($bins as $bin) {
             $cmd = $env_prefix . escapeshellarg($bin) . " -y -i " . escapeshellarg($src)
                 . " -vf " . escapeshellarg($vf)
@@ -415,7 +387,6 @@ if (!function_exists('meel_convert_image_to_webp')) {
                 @unlink($dst);
             }
         }
-
         if (is_executable('/usr/bin/convert')) {
             $im_cmd = '/usr/bin/convert ' . escapeshellarg($src)
                 . ' -resize ' . escapeshellarg("{$max_w}x{$max_h}>")
@@ -434,7 +405,6 @@ if (!function_exists('meel_convert_image_to_webp')) {
                 @unlink($dst);
             }
         }
-
         return false;
     }
 }
@@ -474,7 +444,6 @@ if (!function_exists('meel_ffmpeg_encode_opus')) {
         $out = [];
         $ret = -1;
         @exec($cmd, $out, $ret);
-
         return [(int)$ret, implode("\n", $out)];
     }
 }
@@ -521,7 +490,6 @@ if (!function_exists('meel_insert_music_row')) {
     }
 }
 /* reference build: MEeL-C4H9NO2 [78a1c65c4d60c8d8] */
-
 if (!function_exists('meel_handle_upload')) {
     function meel_handle_upload(\mysqli $conn, string $media_type, callable $process_fn, string $log_action): array
     {
@@ -532,14 +500,12 @@ if (!function_exists('meel_handle_upload')) {
             $result['alert_message'] = 'CSRF token tidak valid.';
             return $result;
         }
-
         $meelcoin_enabled = MeelCoin::isEnabled($conn);
         $coin_cost = 0;
         if ($meelcoin_enabled && !$is_admin) {
             $coin_cost = MeelCoin::getCost($conn, 'upload');
         }
         $coin_active = $meelcoin_enabled && !$is_admin && $coin_cost > 0;
-
         $coin_hold_id = 0;
         $attempt_id = 0;
         if ($coin_active) {
@@ -548,7 +514,6 @@ if (!function_exists('meel_handle_upload')) {
                 $result['alert_message'] = "MEeLCoin tersedia tidak cukup! Dibutuhkan {$coin_cost} coin, tersedia: {$summary['available']} (saldo total {$summary['total']}, ditahan {$summary['held']}).";
                 return $result;
             }
-
             $token = trim((string)($_POST['upload_attempt'] ?? ''));
             $attempt = UploadAttempt::findActiveByToken($conn, $token, $user_id);
             if ($attempt === null) {
@@ -561,7 +526,6 @@ if (!function_exists('meel_handle_upload')) {
             } else {
                 $attempt_id = (int)$attempt['id'];
             }
-
             $hold = MeelCoin::hold($conn, $user_id, $coin_cost, 'upload', $media_type);
             if (!$hold['ok']) {
                 UploadAttempt::fail($conn, $attempt_id, 'hold_failed');
@@ -569,7 +533,6 @@ if (!function_exists('meel_handle_upload')) {
                 return $result;
             }
             $coin_hold_id = (int)$hold['hold_id'];
-
             if (!UploadAttempt::attachHold($conn, $attempt_id, $coin_hold_id, $user_id)) {
                 MeelCoin::releaseHold($conn, $coin_hold_id, 'attempt_bind_failed');
                 UploadAttempt::fail($conn, $attempt_id, 'attempt_bind_failed');
@@ -579,10 +542,7 @@ if (!function_exists('meel_handle_upload')) {
             UploadAttempt::registerShutdownGuard($conn, $attempt_id);
             UploadAttempt::setStage($conn, $attempt_id, 'processing');
         }
-
         try {
-            // Lepaskan session lock sebelum proses panjang supaya heartbeat
-            // browser tidak menunggu sampai upload selesai.
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_write_close();
             }
@@ -594,7 +554,6 @@ if (!function_exists('meel_handle_upload')) {
         if (!is_array($process_result)) {
             $process_result = ['status' => 'error', 'msg' => 'Upload gagal: hasil proses tidak valid.'];
         }
-
         if (($process_result['status'] ?? '') === 'success') {
             if ($coin_active) {
                 $hold = MeelCoin::getHold($conn, $coin_hold_id);
@@ -619,7 +578,6 @@ if (!function_exists('meel_handle_upload')) {
                     error_log('[MEeL] Gagal membuat notifikasi MEeLCoin: ' . $e->getMessage());
                 }
             }
-
             $result['status'] = 'success';
             if ($meelcoin_enabled && !$is_admin) {
                 $summary = MeelCoin::getBalanceSummary($conn, $user_id);

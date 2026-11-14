@@ -798,14 +798,17 @@ class DownloadService extends TranscoderBase
         if (class_exists('UploadAttempt') && $this->currentAttemptId > 0) {
             UploadAttempt::addCleanupPaths($this->conn, $this->currentAttemptId, [$work_folder]);
         }
-        $thumb = $this->stageThumbnail($dl_thumb_src, $work_folder, $db_thumb);
+        $thumb = $this->stageThumbnail($dl_thumb_src, $work_folder, $db_thumb, $staging_mp4);
         $db_thumb = $thumb['db_thumb'];
         $thumb_generated = $thumb['generated'];
-        if ($thumb_generated && class_exists('UploadAttempt') && $this->currentAttemptId > 0) {
-            UploadAttempt::addCleanupPaths($this->conn, $this->currentAttemptId, [
+        if ($thumb_generated && $db_thumb !== '' && class_exists('UploadAttempt') && $this->currentAttemptId > 0) {
+            $cleanup_paths = $this->safeCleanupPaths([
                 $work_folder . $db_thumb,
                 MEEL_HDD_THUMB_DIR . $db_thumb,
             ]);
+            if (!empty($cleanup_paths)) {
+                UploadAttempt::addCleanupPaths($this->conn, $this->currentAttemptId, $cleanup_paths);
+            }
         }
         $file_dur = $this->probeDuration($staging_mp4);
         $work_m3u8 = $work_folder . $folder_name . ".m3u8";
@@ -924,21 +927,54 @@ class DownloadService extends TranscoderBase
             'work_folder' => $work_folder,
         ];
     }
-    private function stageThumbnail(?string $dl_thumb_src, string $work_folder, string $db_thumb): array
+    /**
+     * @return array{db_thumb:string,generated:bool}
+     */
+    private function stageThumbnail(?string $dl_thumb_src, string $work_folder, string $db_thumb, string $staged_video): array
     {
         $work_thumb = $work_folder . $db_thumb;
         if ($dl_thumb_src && file_exists($dl_thumb_src)) {
             $thumb_ok = meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $dl_thumb_src, $work_thumb, 1280, '', self::ENV_PREFIX, 1);
             if (!$thumb_ok) {
-                copy($dl_thumb_src, $work_thumb);
+                $this->removeFile($work_thumb);
             }
             $this->removeFile($dl_thumb_src);
         }
-        $thumb_generated = file_exists($work_thumb) && filesize($work_thumb) > 0;
+        $thumb_generated = meel_is_valid_webp($work_thumb);
+        if (!$thumb_generated && $staged_video !== '' && is_file($staged_video)) {
+            $seek_options = ['-ss 00:00:05 -vframes 1', '-ss 00:00:01 -vframes 1', '-ss 00:00:00 -vframes 1'];
+            foreach ($seek_options as $seek_option) {
+                $thumb_ok = meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $staged_video, $work_thumb, 1280, $seek_option, self::ENV_PREFIX);
+                if ($thumb_ok && meel_is_valid_webp($work_thumb)) {
+                    $thumb_generated = true;
+                    break;
+                }
+                $this->removeFile($work_thumb);
+            }
+        }
         if (!$thumb_generated) {
-            $db_thumb = "default_thumb.webp";
+            $this->removeFile($work_thumb);
+            $db_thumb = meel_resolve_fallback_thumbnail();
         }
         return ['db_thumb' => $db_thumb, 'generated' => $thumb_generated];
+    }
+    /**
+     * @param string[] $paths
+     * @return string[]
+     */
+    private function safeCleanupPaths(array $paths): array
+    {
+        $safe = [];
+        foreach ($paths as $path) {
+            if (!is_string($path) || trim($path) === '') {
+                continue;
+            }
+            if (is_dir($path)) {
+                continue;
+            }
+            $safe[] = $path;
+        }
+        return $safe;
     }
     private function prepareSpriteFolder(): array
     {
@@ -1055,16 +1091,6 @@ class DownloadService extends TranscoderBase
      * @param int $fileDur durasi media, untuk meng-hitung persen progres
      * @return array<string, array{started: bool, pid: int, exit: int|null}>
      * @see docs/{id,en}/modules.md — bagian "Video finalization in DownloadService"
-     *
-     * Dipisah dari finalizeVideo() saat metode itu mencapai 268 baris dengan
-     * sembilan fase (T19). Bentuknya sengaja tetap metode, bukan kelas baru
-     * (mis. FfmpegProcess): semua hook yang dibutuhkan ber-protected di
-     * TranscoderBase, dan daftar anak proses adalah state per-instance yang
-     * dipindai terminateAllProcesses() saat shutdown. Kelas terpisah tidak
-     * bisa menjangkau state itu tanpa melebarkan method-method tersebut jadi
-     * public atau memindahkan daftar anak ke collaborator bersama — dan kedua
-     * pilihan itu tepat jatuh di mekanisme yang tugasnya mencegah proses
-     * ffmpeg yatim ketika request mati di tengah transcode.
      */
     private function runParallelFfmpeg(array $jobs, int $timeoutSeconds, int $fileDur): array
     {
@@ -1257,7 +1283,8 @@ class DownloadService extends TranscoderBase
             }
             foreach (glob($work_folder . "*") as $work_file) {
                 $filename = basename($work_file);
-                if ($thumb_generated && $filename === $db_thumb) {
+                $is_thumb = $thumb_generated && $db_thumb !== '' && $filename === $db_thumb;
+                if ($is_thumb) {
                     $dest = MEEL_HDD_THUMB_DIR . $filename;
                 } else {
                     $dest = $hdd_target_folder . $filename;
@@ -1273,7 +1300,7 @@ class DownloadService extends TranscoderBase
                 throw new \RuntimeException('Storage tidak siap (HDD terlepas?) setelah memindahkan file.');
             }
             $hdd_m3u8_full = MEEL_HDD_VIDEO_UPLOAD . $db_filename;
-            $hdd_thumb_full = MEEL_HDD_THUMB_DIR . $db_thumb;
+            $hdd_thumb_full = $db_thumb !== '' ? MEEL_HDD_THUMB_DIR . $db_thumb : '';
             if (!file_exists($hdd_m3u8_full) || filesize($hdd_m3u8_full) === 0) {
                 throw new \RuntimeException("File M3U8 tidak ditemukan di HDD setelah dipindahkan: $hdd_m3u8_full");
             }
@@ -1286,12 +1313,9 @@ class DownloadService extends TranscoderBase
                     throw new \RuntimeException("Segmen .ts rusak/kosong: " . basename($segment));
                 }
             }
-            if ($thumb_generated && (!file_exists($hdd_thumb_full) || filesize($hdd_thumb_full) === 0)) {
+            if ($thumb_generated && $hdd_thumb_full !== '' && (!file_exists($hdd_thumb_full) || filesize($hdd_thumb_full) === 0)) {
                 throw new \RuntimeException("Thumbnail tidak ditemukan di HDD setelah dipindahkan: $hdd_thumb_full");
             }
-            // Artist/album tidak disimpan di tabel video, tapi ikut terpakai
-            // untuk search_metadata supaya nama artis berbahasa Jepang tetap
-            // punya romaji/terjemahan yang bisa dicari.
             $metadata = generate_search_metadata($title, $artist, $album);
             $views = 0;
             $stmt = $this->conn->prepare(
@@ -1353,7 +1377,7 @@ class DownloadService extends TranscoderBase
         if (is_dir($hdd_target_folder)) {
             $this->removeDir($hdd_target_folder);
         }
-        if ($thumb_generated && $db_thumb !== 'default_thumb.webp') {
+        if ($thumb_generated && $db_thumb !== '' && !meel_is_default_thumbnail($db_thumb)) {
             $this->removeFile(MEEL_HDD_THUMB_DIR . $db_thumb);
         }
     }

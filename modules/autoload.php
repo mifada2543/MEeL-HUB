@@ -9,6 +9,7 @@ spl_autoload_register(function (string $class) {
         'EncodeService' => __DIR__ . '/../modules/transcoder/EncodeService.php',
         'TranscodeService' => __DIR__ . '/../modules/transcoder/TranscodeService.php',
         'MediaLibrary' => __DIR__ . '/media/MediaLibrary.php',
+        'ThumbnailRepair' => __DIR__ . '/media/ThumbnailRepair.php',
         'BookRepository' => __DIR__ . '/media/BookRepository.php',
         'BookUploader' => __DIR__ . '/media/BookUploader.php',
         'MediaViewer' => __DIR__ . '/media/MediaViewer.php',

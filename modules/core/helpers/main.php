@@ -10,5 +10,6 @@ require_once __DIR__ . '/text_upload.php';
 require_once __DIR__ . '/subtitle.php';
 require_once __DIR__ . '/lyrics.php';
 require_once __DIR__ . '/upload.php';
+require_once __DIR__ . '/thumbnail_defaults.php';
 
 /* reference build: MEeL-C10H15N [0f529f9758f770a7] */

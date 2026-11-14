@@ -177,21 +177,66 @@ class WatchContextShareTest extends TestCase
             'Prioritas thumbnail harus thumbnailUrl (absolut) sebelum thumbnail mentah agar gambar tidak broken.'
         );
     }
-    public function testShareButtonWrapperGuestSafe(): void
+    /** @dataProvider musicActionRoles */
+    public function testShareButtonSharesActionRowWithoutRequiringLogin(string $role, bool $owner, bool $canEdit): void
     {
         $src = $this->read('/music/watch.php');
-        $btn = strpos($src, 'id="meel-share-btn"');
-        $ifPos = strpos($src, '<?php if (isset($_SESSION[\'username\'])): ?>');
-        $closePos = strpos($src, '</div>', $btn);
-        $this->assertNotFalse($btn, 'Tombol Bagikan musik tidak ditemukan.');
-        $this->assertNotFalse($ifPos, 'Blok if login tidak ditemukan.');
-        $this->assertNotFalse($closePos, 'Penutup div wrapper tidak ditemukan.');
-        $this->assertLessThan(
-            $ifPos,
-            $closePos,
-            'Penutup div wrapper Bagikan harus SEBELUM blok if login agar tamu '
-            . 'tidak meninggalkan <div> tak-tertutup (menjatuhkan sidebar).'
-        );
+        $start = strpos($src, '<div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between');
+        $end = strpos($src, '<?php if (!empty($v[\'description\'])): ?>', $start);
+        $this->assertNotFalse($start);
+        $this->assertNotFalse($end);
+        $originalSession = $_SESSION ?? [];
+        $_SESSION = $role === 'guest' ? [] : ['username' => 'listener', 'user_id' => 20, 'role' => $role];
+        $v = ['uploader' => 'musician', 'uploader_pfp' => '', 'views' => 1,
+            'upload_date' => '2026-01-01 00:00:00', 'user_id' => $owner ? 20 : 30];
+        $id = 5;
+        $is_logged_in = $role !== 'guest';
+        $user_interaction = '';
+        ob_start();
+        try {
+            $fragment = str_replace('__DIR__', var_export(MEEL_ROOT . '/music', true), substr($src, $start, $end - $start));
+            eval('?><div id="fixture">' . $fragment);
+            $html = ob_get_contents();
+        } finally {
+            ob_end_clean();
+            $_SESSION = $originalSession;
+        }
+        $depth = 0;
+        preg_match_all('/<\/?div\b[^>]*>/', $html, $tags);
+        foreach ($tags[0] as $tag) {
+            $depth += str_starts_with($tag, '</') ? -1 : 1;
+            $this->assertGreaterThanOrEqual(0, $depth, 'Kontainer aksi tidak seimbang.');
+        }
+        $this->assertSame(0, $depth);
+        $dom = new DOMDocument();
+        @$dom->loadHTML('<?xml encoding="UTF-8">' . $html);
+        $xpath = new DOMXPath($dom);
+        $share = $xpath->query('//button[@id="meel-share-btn"]');
+        $this->assertInstanceOf(DOMNodeList::class, $share);
+        $this->assertCount(1, $share);
+        $shareButton = $share->item(0);
+        $this->assertInstanceOf(DOMElement::class, $shareButton);
+        $this->assertSame('Bagikan lagu', $shareButton->getAttribute('title'));
+        $this->assertStringContainsString('bg-gray-800/50', $shareButton->getAttribute('class'));
+        $likes = $xpath->query('//*[@id="like-dislike-container"]');
+        $this->assertInstanceOf(DOMNodeList::class, $likes);
+        $this->assertCount($is_logged_in ? 1 : 0, $likes);
+        if ($is_logged_in) {
+            $likesContainer = $likes->item(0);
+            $this->assertInstanceOf(DOMElement::class, $likesContainer);
+            $shareGroup = $shareButton->parentNode;
+            $likesGroup = $likesContainer->parentNode;
+            $this->assertInstanceOf(DOMNode::class, $shareGroup);
+            $this->assertInstanceOf(DOMNode::class, $likesGroup);
+            $this->assertTrue($shareGroup->isSameNode($likesGroup), 'Bagikan dan interaksi harus satu grup, bukan terpisah di tengah.');
+        }
+        $this->assertCount($canEdit ? 1 : 0, $xpath->query('//a[@title="Edit Musik"]'));
+        $this->assertCount(0, $xpath->query('//a[contains(@href,"transcode") or @download]'));
+    }
+
+    public static function musicActionRoles(): array
+    {
+        return [['guest', false, false], ['user', false, false], ['user', true, true], ['admin', false, true]];
     }
     public function testShareModalDelegatedMelawanRerender(): void
     {

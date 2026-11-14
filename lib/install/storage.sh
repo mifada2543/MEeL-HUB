@@ -30,6 +30,48 @@ storage_create_dirs() {
     log_ok "Storage directories created at: $base"
 }
 
+# ─── Seed default video thumbnail ───
+storage_seed_default_thumbnail() {
+    local base="${HDD_BASE:-}"
+    local project_root="${PROJECT_ROOT:-}"
+    [ -z "$base" ] || [ -z "$project_root" ] && { log_fail "storage_seed_default_thumbnail: base or project_root not set"; return 1; }
+    local thumb_dir="$base/video/upload/thumbnail"
+    local thumb_file="$thumb_dir/default_thumb.webp"
+    local source="$project_root/assets/img/video0.webp"
+    if [ "${DRY_RUN:-false}" = "true" ]; then
+        log_verbose "[DRY-RUN] Would seed default thumbnail: $thumb_file"
+        return 0
+    fi
+    if [ -f "$thumb_file" ]; then
+        log_verbose "Default thumbnail already present: $thumb_file"
+        return 0
+    fi
+    if [ ! -f "$source" ] || [ ! -s "$source" ]; then
+        log_warn "Default thumbnail source missing or empty: $source"
+        log_warn "Fallback thumbnail will be seeded lazily at runtime."
+        return 0
+    fi
+    if [ ! -d "$thumb_dir" ]; then
+        log_warn "Video thumbnail directory missing: $thumb_dir"
+        log_warn "Fallback thumbnail will be seeded lazily at runtime."
+        return 0
+    fi
+    local tmp="$thumb_file.tmp.$$"
+    if ! cp "$source" "$tmp" 2>/dev/null; then
+        rm -f "$tmp" 2>/dev/null || true
+        log_warn "Failed to stage default thumbnail in: $thumb_dir"
+        log_warn "Fallback thumbnail will be seeded lazily at runtime."
+        return 0
+    fi
+    if ! mv -f "$tmp" "$thumb_file" 2>/dev/null; then
+        rm -f "$tmp" 2>/dev/null || true
+        log_warn "Failed to install default thumbnail: $thumb_file"
+        log_warn "Fallback thumbnail will be seeded lazily at runtime."
+        return 0
+    fi
+    log_ok "Default thumbnail seeded: $thumb_file"
+    return 0
+}
 # ─── Create mount marker ───
 storage_create_mount_marker() {
     local base="${HDD_BASE:-}"
@@ -43,24 +85,19 @@ storage_create_mount_marker() {
     touch "$base/.meel_mount"
     log_ok "Volume marker .meel_mount created"
 }
-
-# ─── Copy .htaccess hardening to storage targets ───
 storage_copy_htaccess() {
     local base="${HDD_BASE:-}"
     local project_root="${PROJECT_ROOT:-}"
     [ -z "$base" ] || [ -z "$project_root" ] && { log_fail "storage_copy_htaccess: base or project_root not set"; return 1; }
-
     if [ "${DRY_RUN:-false}" = "true" ]; then
         log_verbose "[DRY-RUN] Would copy .htaccess to storage targets"
         return 0
     fi
-
     local repo_htaccess="$project_root/data_drive/.htaccess"
     if [ ! -f "$repo_htaccess" ]; then
         log_fail "Source .htaccess not found: $repo_htaccess"
         return 1
     fi
-
     local target
     for target in \
         "$base/video/upload" \
@@ -74,7 +111,6 @@ storage_copy_htaccess() {
                 log_warn "Failed to copy .htaccess to $target"
         fi
     done
-
     local priv_htaccess="$base/drive/private_admins/.htaccess"
     if [ -d "$base/drive/private_admins" ] && [ ! -f "$priv_htaccess" ]; then
         cat > "$priv_htaccess" <<'HTEOF'
@@ -85,25 +121,20 @@ HTEOF
     fi
     return 0
 }
-
 # ─── Create symlinks ───
 storage_create_symlinks() {
     local base="${HDD_BASE:-}"
     local project_root="${PROJECT_ROOT:-}"
     local module target link
     [ -z "$base" ] || [ -z "$project_root" ] && return 1
-
     if [ "${DRY_RUN:-false}" = "true" ]; then
         log_verbose "[DRY-RUN] Would create symlinks: video/upload, music/upload, books/upload, data_drive/public"
         return 0
     fi
-
     log_step "Creating storage symlinks"
-
     for module in video music books; do
         target="$base/${module}/upload"
         link="$project_root/${module}/upload"
-
         if [ -L "$link" ]; then
             log_warn "${module}/upload already symlinked — skipping"
             continue
@@ -111,14 +142,12 @@ storage_create_symlinks() {
             log_warn "${module}/upload has data — NOT replacing"
             continue
         fi
-
         mkdir -p "$target"
         storage_copy_htaccess
         rm -rf "$link"
         ln -sfn "$target" "$link"
         log_ok "Symlink: ${module}/upload → $target"
     done
-
     local drive_target="$base/drive/public"
     local drive_link="$project_root/data_drive/public"
 
@@ -134,7 +163,6 @@ storage_create_symlinks() {
         log_ok "Symlink: data_drive/public → $drive_target"
     fi
 }
-
 # ─── Create local runtime directories ───
 storage_create_local_dirs() {
     local project_root="${PROJECT_ROOT:-}"
@@ -143,7 +171,6 @@ storage_create_local_dirs() {
         log_verbose "[DRY-RUN] Would create local dirs: data_drive/public, data_drive/private_admins, temp, profile/upload"
         return 0
     fi
-
     mkdir -p \
         "$project_root/data_drive/public" \
         "$project_root/data_drive/private_admins" \
@@ -151,18 +178,15 @@ storage_create_local_dirs() {
         "$project_root/profile/upload"
     log_ok "Local runtime directories created"
 }
-
 # ─── Set ownership & permissions ───
 storage_set_permissions() {
     local base="${HDD_BASE:-}"
     local project_root="${PROJECT_ROOT:-}"
     [ -z "$base" ] || [ -z "$project_root" ] && return 1
-
     if [ "${DRY_RUN:-false}" = "true" ]; then
         log_verbose "[DRY-RUN] Would set storage permissions"
         return 0
     fi
-
     if [ "${CAN_ELEVATE:-true}" = "true" ] && id "${WEB_USER:-www-data}" >/dev/null 2>&1; then
         if confirm "Set storage ownership to ${WEB_USER}:${WEB_USER}?" Y; then
             $SUDO chown -R "${WEB_USER}:${WEB_USER}" \
@@ -180,7 +204,6 @@ storage_set_permissions() {
                 $SUDO find -P "$perm_dir" -type d -exec chmod 770 {} + 2>/dev/null || true
                 $SUDO find -P "$perm_dir" -type f -exec chmod 640 {} + 2>/dev/null || true
             done
-
             log_ok "Storage ownership & permissions set"
         fi
     else
@@ -191,7 +214,6 @@ storage_set_permissions() {
     fi
     return 0
 }
-
 # ─── Verify storage ───
 storage_verify() {
     local base="${HDD_BASE:-}"
@@ -202,11 +224,9 @@ storage_verify() {
         log_verbose "[DRY-RUN] Would verify storage setup"
         return 0
     fi
-
     log_step "Verifying storage setup"
     local failed=0
     local target expected ht subdir module u
-
     if [ ! -d "$base" ]; then
         log_fail "MEEL_HDD_BASE not a directory: $base"; failed=1
     elif [ ! -r "$base" ] || [ ! -w "$base" ]; then
@@ -214,7 +234,6 @@ storage_verify() {
     else
         log_ok "MEEL_HDD_BASE OK: $base"
     fi
-
     [ ! -f "$base/.meel_mount" ] && log_warn "Volume marker missing: $base/.meel_mount"
 
     for subdir in \
@@ -224,7 +243,13 @@ storage_verify() {
         "books/upload/thumbnail"; do
         [ ! -d "$base/$subdir" ] && { log_fail "Required subdir missing: $base/$subdir"; failed=1; }
     done
-
+    # Fallback thumbnail boleh hilang — runtime akan men-seed-nya secara lazy.
+    local default_thumb="$base/video/upload/thumbnail/default_thumb.webp"
+    if [ ! -f "$default_thumb" ]; then
+        log_warn "Default thumbnail missing: $default_thumb (will be seeded at runtime)"
+    else
+        log_ok "Default thumbnail OK: $default_thumb"
+    fi
     for module in video music books; do
         local link="$project_root/${module}/upload"
         if [ ! -L "$link" ]; then
@@ -240,7 +265,6 @@ storage_verify() {
             fi
         fi
     done
-
     for u in books/upload music/upload video/upload; do
         ht="$project_root/$u/.htaccess"
         if [ ! -f "$ht" ]; then
@@ -251,13 +275,12 @@ storage_verify() {
             log_ok "$u/.htaccess OK"
         fi
     done
-
     return $failed
 }
-
 # ─── Main storage step ───
 storage_run() {
     storage_create_dirs || { log_fail "storage_create_dirs failed"; return 1; }
+    storage_seed_default_thumbnail || { log_fail "storage_seed_default_thumbnail failed"; return 1; }
     storage_create_mount_marker || { log_fail "storage_create_mount_marker failed"; return 1; }
     storage_copy_htaccess || { log_fail "storage_copy_htaccess failed"; return 1; }
     storage_create_symlinks || { log_fail "storage_create_symlinks failed"; return 1; }
@@ -265,10 +288,9 @@ storage_run() {
     storage_set_permissions || { log_fail "storage_set_permissions failed"; return 1; }
     storage_verify || { log_fail "storage_verify failed"; return 1; }
 }
-
 # Export functions
 if [ -n "${BASH_VERSION:-}" ]; then
     export -f storage_create_dirs storage_create_mount_marker storage_copy_htaccess 2>/dev/null || true
     export -f storage_create_symlinks storage_create_local_dirs storage_set_permissions 2>/dev/null || true
-    export -f storage_verify storage_run 2>/dev/null || true
+    export -f storage_seed_default_thumbnail storage_verify storage_run 2>/dev/null || true
 fi

@@ -10,23 +10,19 @@ $conn = $GLOBALS['conn'] ?? null;
 meel_storage_guard();
 GarbageCollector::run();
 GarbageCollector::sweepUploadAccounting($conn);
-
 ignore_user_abort(true);
 set_time_limit(0);
 $status = "";
 $user = $_SESSION['username'];
 $user_id = $_SESSION['user_id'];
 $alert_message = "";
-
 $user_role = get_user_role($conn, $user_id);
 $is_admin = ($user_role === 'admin');
-
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 $hour_count = 0;
 $hourly_limit = '∞';
 $coin_held = 0;
 $coin_available = 0;
-
 if ($meelcoin_enabled) {
     if (!$is_admin) {
         MeelCoin::refill($conn, $user_id, $user_role);
@@ -45,7 +41,6 @@ if ($meelcoin_enabled) {
     $hour_count = get_hourly_upload_count($conn, $user_id, 'music');
     $hourly_limit = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
 }
-
 $coin_active = $meelcoin_enabled && !$is_admin && $coin_cost > 0;
 $upload_attempt_token = '';
 if ($coin_active && $_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -54,11 +49,8 @@ if ($coin_active && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $upload_attempt_token = (string)$new_attempt['token'];
     }
 }
-
 $total_uploads = get_total_upload_count($conn, $user_id, 'music');
-
 $uploader = new Uploader($conn, $user_id, $user);
-
 if (isset($_POST['upload'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $alert_message = 'CSRF token tidak valid. Silakan muat ulang halaman lalu coba lagi.';
@@ -67,7 +59,6 @@ if (isset($_POST['upload'])) {
             $music_base = dirname(meel_media_base_path('music')) . '/';
             return $uploader->processMusic($post, $files, $music_base, $holdId, $attemptId);
         }, 'upload_music');
-
         $status = $upload_result['status'];
         $alert_message = $upload_result['alert_message'];
         if (isset($upload_result['extra']['coin_balance'])) {
@@ -78,10 +69,7 @@ if (isset($_POST['upload'])) {
             $hour_count = $upload_result['extra']['hour_count'] ?? $hour_count;
         }
         $total_uploads = $upload_result['extra']['total_uploads'] ?? $total_uploads;
-
         if ($coin_active) {
-            // Form tetap di halaman setelah sukses/gagal; token lama sudah
-            // selesai, jadi siapkan sesi baru untuk upload berikutnya.
             $new_attempt = UploadAttempt::create($conn, (int)$user_id, 'music');
             $upload_attempt_token = $new_attempt !== null ? (string)$new_attempt['token'] : '';
         }
@@ -110,7 +98,6 @@ if (isset($_POST['upload'])) {
 <body>
 <?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <div class="page-wrap">
-
         <nav class="top-nav">
             <a href="../" class="nav-brand">MEeL<span>Musik</span></a>
             <div class="nav-sep"></div>
@@ -121,12 +108,9 @@ if (isset($_POST['upload'])) {
                 <span class="admin-badge"><i data-lucide="shield" style="width:10px;height:10px;"></i> Admin</span>
             <?php endif; ?>
         </nav>
-
         <main>
             <div class="upload-layout">
-
             <aside class="sidebar-panel">
-
                 <div class="hero-waveform">
                     <div class="waveform-bars">
                         <span></span><span></span><span></span><span></span>
@@ -138,7 +122,6 @@ if (isset($_POST['upload'])) {
                         <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#cbd5e1;margin-top:3px;">FLAC · MP3 · WAV · OPUS</div>
                     </div>
                 </div>
-
                 <div class="stats-strip">
                     <?php if ($meelcoin_enabled): ?>
                         <div class="stat-chip" style="grid-column:1/-1;">
@@ -179,14 +162,13 @@ if (isset($_POST['upload'])) {
                         </div>
                     <?php endif; ?>
                 </div>
-
                 <div class="guide-list">
                     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Unggah</div>
                     <div class="guide-item">
                         <div class="guide-icon"><i data-lucide="file-audio" style="width:13px;height:13px;color:var(--accent);"></i></div>
                         <div>
                             <div class="guide-title">Format Audio</div>
-                            <div class="guide-desc">FLAC, MP3, WAV, OPUS, OGG, atau M4A. Auto-transcode ke Opus untuk efisiensi.</div>
+                            <div class="guide-desc">FLAC, MP3, WAV, OPUS, OGG, atau M4A. Dikonversi ke Opus; file yang sudah terverifikasi Opus tidak dikonversi ulang. Jika konversi gagal, upload dibatalkan.</div>
                         </div>
                     </div>
                     <div class="guide-item">
@@ -213,9 +195,7 @@ if (isset($_POST['upload'])) {
                         </div>
                     <?php endif; ?>
                 </div>
-
             </aside>
-
             <section class="form-panel">
                 <div class="form-header">
                     <div>
@@ -224,7 +204,6 @@ if (isset($_POST['upload'])) {
                     </div>
                     <i data-lucide="music-2" style="width:36px;height:36px;color:var(--accent);opacity:.3;flex-shrink:0;margin-top:4px;"></i>
                 </div>
-
                 <?php if ($status === "success"): ?>
                     <div class="alert alert-success">
                         <i data-lucide="check-circle" style="width:15px;height:15px;flex-shrink:0;"></i>
@@ -238,7 +217,6 @@ if (isset($_POST['upload'])) {
                     <input type="hidden" name="upload_attempt" id="upload-attempt"
                         value="<?= htmlspecialchars($upload_attempt_token, ENT_QUOTES, 'UTF-8') ?>"
                         data-heartbeat-url="../api/upload-heartbeat">
-
                     <div class="field-group">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
                             <label class="field-label" for="f-title">Judul Lagu</label>
@@ -253,7 +231,6 @@ if (isset($_POST['upload'])) {
                             placeholder="Judul Lagu..."
                             class="field-input">
                     </div>
-
                     <div class="two-col">
                         <div class="field-group">
                             <label class="field-label" for="f-artist">Artis</label>
@@ -266,16 +243,13 @@ if (isset($_POST['upload'])) {
                                 placeholder="Album (Opsional)..." class="field-input">
                         </div>
                     </div>
-
                     <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description"
                             placeholder="Masukkan deskripsi lagu... (opsional)"
                             class="field-input" style="flex:1;min-height:100px;resize:none;"></textarea>
                     </div>
-
                     <div class="divider" style="margin:0;"></div>
-
                     <div class="field-group">
                         <label class="field-label">Lirik (Opsional)</label>
                         <div class="drop-grid">
@@ -296,13 +270,11 @@ if (isset($_POST['upload'])) {
                             </div>
                         </div>
                     </div>
-
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <label class="field-label">File Audio & Sampul</label>
                         <div class="drop-grid">
-
                             <div class="drop-zone" id="audio-zone">
-                                <input type="file" name="media" accept="audio/*" required
+                                <input type="file" name="media" accept=".flac,.mp3,.wav,.opus,.ogg,.m4a" required
                                     id="audio-input" onchange="handleAudioFile(this)" aria-label="Pilih atau jatuhkan file audio untuk mengunggah lagu">
                                 <div class="drop-zone-icon">
                                     <i data-lucide="file-audio" style="width:18px;height:18px;color:var(--accent);"></i>
@@ -310,7 +282,6 @@ if (isset($_POST['upload'])) {
                                 <div class="drop-zone-label" id="audio-label">Seret &amp; Jatuhkan Audio</div>
                                 <div class="drop-zone-sub">FLAC · MP3 · WAV · OPUS</div>
                             </div>
-
                             <div class="drop-zone" id="cover-zone">
                                 <input type="file" name="thumbnail" accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.bmp,.ico,image/*"
                                     id="cover-input" onchange="handleCoverFile(this)" aria-label="Pilih atau jatuhkan sampul untuk lagu">
@@ -323,9 +294,7 @@ if (isset($_POST['upload'])) {
                             </div>
                         </div>
                     </div>
-
                     <?php if ($is_admin): ?>
-
                         <div class="toggle-card">
                             <div>
                                 <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Anti Transcode</div>
@@ -337,14 +306,12 @@ if (isset($_POST['upload'])) {
                             </label>
                         </div>
                     <?php endif; ?>
-
                     <div style="margin-top:auto;">
                         <button type="submit" name="upload" id="btn-upload" class="btn-primary">
                             <i data-lucide="upload" style="width:15px;height:15px;"></i>
                             Simpan ke MEeL Musik
                         </button>
                     </div>
-
                     <div class="footer-links">
                         <a href="beranda" class="footer-link">Koleksi</a>
                         <a href="../" class="footer-link">Portal</a>
@@ -356,13 +323,10 @@ if (isset($_POST['upload'])) {
                     </div>
                 </form>
             </section>
-
             </div>
         </main>
     </div>
-
     <?php include __DIR__ . '/../partials/footer.php'; ?>
-
     <div id="upload-overlay">
         <div class="overlay-card">
             <div class="upload-wave">
