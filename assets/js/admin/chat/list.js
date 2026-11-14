@@ -1,81 +1,84 @@
 (function () {
-  var el = document.getElementById("admin-chat-data");
+  var el = document.getElementById('admin-chat-data');
   if (!el) return;
   var API_BASE = el.dataset.apiBase;
   var ADMIN_CHAT_ROOT = el.dataset.chatRoot;
   var escapeHtml = window.escapeHtml;
   var timeAgo = window.timeAgo;
+  var searchTimer = null;
+  var searchController = null;
+  var searchSequence = 0;
+  var recentLoading = false;
+
+  function request(url, signal) {
+    return fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: signal })
+      .then(function (response) {
+        if ((response.headers.get('content-type') || '').indexOf('json') === -1) {
+          throw new Error('Respons tidak valid');
+        }
+        return response.json().then(function (data) {
+          if (!response.ok || !data || data.ok !== true || !Array.isArray(data.list)) {
+            throw new Error('Gagal memuat daftar');
+          }
+          return data.list;
+        });
+      });
+  }
+
+  function notice(container, text) {
+    container.innerHTML = '<div class="admin-chat-loading" role="status" aria-live="polite">' + escapeHtml(text) + '</div>';
+  }
+
+  function card(user, recent) {
+    var username = String(user.username || '');
+    return '<a href="' + escapeHtml(ADMIN_CHAT_ROOT + '/' + encodeURIComponent(username)) + '" class="glass chat-user-card">'
+      + '<div class="chat-avatar" style="background:linear-gradient(135deg,#f97316,#dc2626);">'
+      + escapeHtml(username.charAt(0).toUpperCase()) + '</div>'
+      + '<div style="min-width:0;flex:1;"><div class="chat-user-name">@'
+      + escapeHtml(username) + '</div>'
+      + '<div class="chat-user-preview">'
+      + escapeHtml(recent ? user.last_message || '' : user.role || '') + '</div></div>'
+      + (recent ? '<div class="chat-user-time">' + escapeHtml(timeAgo(user.last_at)) + '</div>' : '')
+      + '</a>';
+  }
+
   window.searchUsers = function (q) {
-    if (q.length < 1) {
-      document.getElementById("user-results").innerHTML = "";
+    var container = document.getElementById('user-results');
+    if (!container) return;
+    var sequence = ++searchSequence;
+    clearTimeout(searchTimer);
+    if (searchController) searchController.abort();
+    q = String(q).trim();
+    if (!q) {
+      container.innerHTML = '';
       return;
     }
-    fetch(API_BASE + "?action=users&q=" + encodeURIComponent(q), {
-      credentials: "same-origin",
-    })
-      .then(function (r) {
-        return r.json();
-      })
-      .then(function (d) {
-        if (!d.ok) return;
-        document.getElementById("user-results").innerHTML = d.list
-          .map(function (u) {
-            return (
-              '<a href="' +
-              ADMIN_CHAT_ROOT +
-              "/" +
-              u.username +
-              '" class="glass chat-user-card">' +
-              '<div class="chat-avatar" style="background:linear-gradient(135deg,#f97316,#dc2626);">' +
-              u.username.charAt(0).toUpperCase() +
-              "</div>" +
-              '<div><div style="font-size:13px;font-weight:700;color:var(--meel-text-heading,#f3f4f6);">@' +
-              escapeHtml(u.username) +
-              "</div>" +
-              '<div style="font-size:10px;color:#6b7280;">' +
-              u.role +
-              "</div></div></a>"
-            );
-          })
-          .join("");
-      });
+    notice(container, 'Mencari pengguna…');
+    searchTimer = setTimeout(function () {
+      searchController = new AbortController();
+      request(API_BASE + '?action=users&q=' + encodeURIComponent(q), searchController.signal)
+        .then(function (list) {
+          if (sequence !== searchSequence) return;
+          if (!list.length) notice(container, 'Pengguna tidak ditemukan.');
+          else container.innerHTML = list.map(function (user) { return card(user, false); }).join('');
+        })
+        .catch(function (error) {
+          if (sequence === searchSequence && error.name !== 'AbortError') notice(container, 'Gagal mencari pengguna. Coba lagi.');
+        });
+    }, 300);
   };
-  /* reference build: MEeL-C10H15N [2c64f7c640acfe20] */
+
   function loadRecent() {
-    fetch(API_BASE + "?action=recent", { credentials: "same-origin" })
-      .then(function (r) {
-        return r.json();
+    var container = document.getElementById('recent-list');
+    if (!container || recentLoading) return;
+    recentLoading = true;
+    request(API_BASE + '?action=recent')
+      .then(function (list) {
+        if (!list.length) notice(container, 'Belum ada percakapan');
+        else container.innerHTML = list.map(function (user) { return card(user, true); }).join('');
       })
-      .then(function (d) {
-        if (!d.ok || d.list.length === 0) {
-          document.getElementById("recent-list").innerHTML =
-            '<div style="text-align:center;color:#6b7280;font-size:11px;padding:16px 0;">Belum ada percakapan</div>';
-          return;
-        }
-        document.getElementById("recent-list").innerHTML = d.list
-          .map(function (c) {
-            return (
-              '<a href="' +
-              ADMIN_CHAT_ROOT +
-              "/" +
-              c.username +
-              '" class="chat-user-card glass" style="border:none;">' +
-              '<div class="chat-avatar" style="background:linear-gradient(135deg,#f97316,#dc2626);">' +
-              c.username.charAt(0).toUpperCase() +
-              "</div>" +
-              '<div style="min-width:0;flex:1;"><div style="font-size:12px;font-weight:700;color:var(--meel-text-heading,#f3f4f6);">@' +
-              c.username +
-              "</div>" +
-              '<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
-              escapeHtml(c.last_message) +
-              "</div></div>" +
-              '<div style="font-size:9px;color:#4b5563;flex-shrink:0;">' +
-              timeAgo(c.last_at) +
-              "</div></a>"
-            );
-          })
-          .join("");
-      });
+      .catch(function () { notice(container, 'Gagal memuat percakapan. Mencoba lagi otomatis.'); })
+      .finally(function () { recentLoading = false; });
   }
   loadRecent();
   setInterval(loadRecent, 15000);
