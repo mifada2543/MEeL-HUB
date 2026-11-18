@@ -2,7 +2,6 @@
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-
 const root = path.join(__dirname, "..", "..");
 const scenario = process.argv[2] || "selfheal-success";
 let CLOCK = 1000000;
@@ -29,11 +28,18 @@ function advance(ms) {
   }
 }
 const logs = { warn: [], log: [] };
+const docListeners = {};
+const winListeners = {};
+let abortCount = 0;
+let reloadCount = 0;
+let destroyCount = 0;
+let miniShellVisible = false;
 function makeVideoEl() {
   const el = {
     dataset: {},
     _listeners: {},
     error: null,
+    removeAttribute() {},
     addEventListener(type, fn) {
       (this._listeners[type] = this._listeners[type] || []).push(fn);
     },
@@ -62,8 +68,23 @@ function makePlayer() {
       return Promise.resolve();
     },
     on() {},
-    destroy() {},
+    destroy() {
+      destroyCount++;
+    },
   };
+}
+let probeResponse = {
+  ok: true,
+  status: 200,
+  headers: { get: () => "application/x-mpegURL" },
+  text: async () => "#EXTM3U\n#EXT-X-VERSION:3\nclip_000.ts\n",
+};
+let probeCalls = 0;
+let fetchCount = 0;
+function fakeFetch() {
+  probeCalls++;
+  fetchCount++;
+  return Promise.resolve(probeResponse);
 }
 const videoElement = makeVideoEl();
 const player = makePlayer();
@@ -95,16 +116,29 @@ const sandbox = {
   sessionStorage: { getItem: () => null, removeItem: () => {} },
   document: {
     hidden: false,
-    getElementById: (id) => (id === "main-video-wrapper" ? {} : null),
-    addEventListener: () => {},
+    readyState: "complete",
+    getElementById: (id) => {
+      if (id === "main-video-wrapper") return {};
+      if (id === "mini-player-shell" && miniShellVisible) return { style: { display: "block" } };
+      return null;
+    },
+    addEventListener: (type, fn) => {
+      (docListeners[type] = docListeners[type] || []).push(fn);
+    },
   },
-  fetch: () =>
-    Promise.resolve({ ok: true, headers: { get: () => "application/x-mpegURL" } }),
+  addEventListener: (type, fn) => {
+    (winListeners[type] = winListeners[type] || []).push(fn);
+  },
+  location: { reload: () => { reloadCount++; } },
+  fetch: fakeFetch,
   AbortController: class {
     constructor() {
-      this.signal = {};
+      this.signal = { aborted: false };
     }
-    abort() {}
+    abort() {
+      abortCount++;
+      this.signal.aborted = true;
+    }
   },
   videoElement: videoElement,
   player: player,
@@ -127,7 +161,17 @@ const sandbox = {
   selfHealFrom: -1,
   MEDIA_ERROR_GRACE_MS: 8000,
   glowRAF: null,
+  playbackStartTimeout: null,
   hls: null,
+  HLS_CONFIG: {},
+  Hls: Object.assign(class {
+    static isSupported() { return true; }
+    constructor(config) { this.config = config; }
+    on() {}
+    loadSource() { hlsCalls.push("loadSource"); }
+    attachMedia() { hlsCalls.push("attachMedia"); }
+    destroy() { hlsCalls.push("destroy"); }
+  }, { Events: { MANIFEST_PARSED: "manifestParsed" } }),
   meelCreateStuckDetector: () => ({ start() {}, stop() {} }),
   meelCreateWaitingTimeout: () => ({ start() {}, stop() {} }),
   meelCreateReconnectOverlay: () => ({ show() {}, hide() {}, showFailed() {} }),
@@ -155,19 +199,13 @@ vm.runInContext(
 );
 sandbox.registerVideoErrorListener(videoElement);
 const recovery = {
-  checked: false,
-  fetchCalls: 0,
+  get fetchCalls() {
+    return fetchCount;
+  },
 };
-sandbox.fetch = function () {
-  recovery.fetchCalls++;
-  return Promise.resolve({
-    ok: true,
-    headers: { get: () => "application/x-mpegURL" },
-  });
-};
+sandbox.fetch = fakeFetch;
 
 const R = {};
-
 function raiseDecodeError() {
   videoElement.error = { code: 3, message: "PIPELINE_ERROR_DECODE: video decode error! code: 3" };
   videoElement.dispatch("error");
@@ -216,5 +254,146 @@ if (scenario === "network-error-heals") {
   R.usedStartLoad = hlsCalls.some((c) => c.startsWith("startLoad:"));
   R.noRecoverForCode2 = !hlsCalls.includes("recoverMediaError");
 }
-R.scenario = scenario;
-process.stdout.write(JSON.stringify(R) + "\n");
+function probeResponseFor(ok, status, contentType, body) {
+  return {
+    ok: !!ok,
+    status: status || 0,
+    headers: { get: () => contentType },
+    text: async () => body,
+  };
+}
+(async () => {
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+  if (scenario === "probe-stale-text-rejected") {
+    probeResponse = probeResponseFor(true, 200, "text/plain", "storage unavailable");
+    sandbox.recoveryRetryCount = 7;
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.noOnlineLog = !logs.log.some((l) => l.includes("terdeteksi online"));
+    R.notResetRetry = sandbox.recoveryRetryCount >= 7;
+    R.retryScheduled = timers.length > 0;
+  }
+  if (scenario === "probe-503-not-online") {
+    probeResponse = probeResponseFor(false, 503, "text/plain", "");
+    sandbox.recoveryRetryCount = 7;
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.noOnlineLog = !logs.log.some((l) => l.includes("terdeteksi online"));
+    R.notResetRetry = sandbox.recoveryRetryCount >= 7;
+    R.statusLogged = logs.log.some((l) => l.includes("503"));
+  }
+  if (scenario === "probe-valid-manifest") {
+    probeResponse = probeResponseFor(true, 200, "application/vnd.apple.mpegurl", "#EXTM3U\nclip_000.ts\n");
+    sandbox.recoveryRetryCount = 7;
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.onlineLog = logs.log.some((l) => l.includes("terdeteksi online"));
+    R.retryReset = sandbox.recoveryRetryCount === 0;
+  }
+  if (scenario === "probe-aborted-on-swap") {
+    let resolveFetch = null;
+    sandbox.fetch = () => {
+      fetchCount++;
+      return new Promise((resolve) => { resolveFetch = resolve; });
+    };
+    sandbox.triggerPlayerRecovery();
+    const before = abortCount;
+    (docListeners["htmx:beforeSwap"] || []).forEach((fn) =>
+      fn({ detail: { target: { id: "main-video-wrapper" } } })
+    );
+    R.abortOnSwap = abortCount > before;
+    R.timersCleared = timers.length === 0;
+    if (resolveFetch) resolveFetch(probeResponseFor(true, 200, "text/plain", "stale"));
+    await flush();
+  }
+  if (scenario === "probe-hidden-no-retry") {
+    probeResponse = probeResponseFor(false, 503, "text/plain", "");
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    const before = fetchCount;
+    sandbox.document.hidden = true;
+    advance(60000);
+    R.noRetryWhileHidden = fetchCount === before;
+  }
+  if (scenario === "probe-slow-body-cancel") {
+    let resolveBody = null;
+    probeResponse = {
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/vnd.apple.mpegurl" },
+      text: () => new Promise((resolve) => { resolveBody = resolve; }),
+    };
+    sandbox.triggerPlayerRecovery();
+    const before = abortCount;
+    sandbox.cancelMediaProbe();
+    R.abortDuringBody = abortCount > before;
+    R.noRetryAfterCancel = timers.length === 0;
+    if (resolveBody) resolveBody("#EXTM3U\n");
+    await flush();
+    R.staleResultIgnored = !logs.log.some((l) => l.includes("terdeteksi online"));
+  }
+  if (scenario === "probe-stale-rejection") {
+    const bodies = [];
+    sandbox.fetch = () => {
+      fetchCount++;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => "application/vnd.apple.mpegurl" },
+        text: () => new Promise((_resolve, reject) => { bodies.push(reject); }),
+      });
+    };
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    sandbox.cancelMediaProbe();
+    sandbox.recoveryRetryCount = 0;
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    if (bodies[0]) bodies[0](new Error("aborted"));
+    await flush();
+    const before = abortCount;
+    sandbox.cancelMediaProbe();
+    R.newProbeAborted = abortCount > before;
+  }
+  if (scenario === "probe-mp4-video-online") {
+    sandbox.isHls = false;
+    probeResponse = probeResponseFor(true, 200, "video/mp4", "binary");
+    sandbox.recoveryRetryCount = 7;
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.onlineLog = logs.log.some((l) => l.includes("terdeteksi online"));
+    R.retryReset = sandbox.recoveryRetryCount === 0;
+  }
+  if (scenario === "bfcache-mini-rebuild") {
+    miniShellVisible = true;
+    sandbox.hls = { destroy: () => hlsCalls.push("destroy") };
+    sandbox.document.readyState = "loading";
+    vm.runInContext(
+      fs.readFileSync(path.join(root, "assets/js/video/watch/lifecycle.js"), "utf8"),
+      sandbox,
+      { filename: "lifecycle.js" }
+    );
+    (winListeners["pageshow"] || []).forEach((fn) => fn({ persisted: true }));
+    R.hlsRebuilt = hlsCalls.includes("destroy") && hlsCalls.includes("loadSource") && hlsCalls.includes("attachMedia");
+    R.playerKept = destroyCount === 0;
+    R.noReload = reloadCount === 0;
+  }
+  if (scenario === "bfcache-teardown") {
+    sandbox.document.readyState = "loading";
+    vm.runInContext(
+      fs.readFileSync(path.join(root, "assets/js/video/watch/lifecycle.js"), "utf8"),
+      sandbox,
+      { filename: "lifecycle.js" }
+    );
+    const before = destroyCount;
+    (winListeners["pageshow"] || []).forEach((fn) => fn({ persisted: true }));
+    R.playerDestroyed = destroyCount > before;
+    R.locationReloaded = reloadCount === 1;
+  }
+  R.scenario = scenario;
+  process.stdout.write(JSON.stringify(R) + "\n");
+})().catch((err) => {
+  process.stderr.write(String((err && err.stack) || err) + "\n");
+  process.exit(1);
+});
