@@ -64,6 +64,9 @@
     let recoveryRetryCount = 0;
     let isRecovering = false;
     let lastRecoveryTime = 0;
+    let recoveryGeneration = 0;
+    let recoveryRetryTimer = null;
+    let pendingReadyHandler = null;
     let hasEverPlayed = false;
     var _musicOverlay = meelCreateReconnectOverlay({
       containerId: "player-container",
@@ -88,6 +91,7 @@
     });
     function triggerStreamRecovery() {
       if (isRecovering || !hasEverPlayed || player.paused) return;
+      const generation = recoveryGeneration;
       var now = Date.now();
       if (now - lastRecoveryTime < RECOVERY_COOLDOWN_MS) return;
       if (recoveryRetryCount >= RECOVERY_MAX_RETRIES) {
@@ -110,19 +114,24 @@
       audio.src = freshUrl;
       audio.load();
       function onReady() {
+        if (generation !== recoveryGeneration) return;
+        pendingReadyHandler = null;
         if (savedTime > 5) audio.currentTime = savedTime;
         audio.play().then(function () {
+          if (generation !== recoveryGeneration) return;
           isRecovering = false;
           recoveryRetryCount = 0;
           _musicOverlay.hide();
           _musicStuckDetector.start();
           console.log('✅ Music stream recovered at ' + Math.floor(savedTime) + 's');
         }).catch(function (err) {
+          if (generation !== recoveryGeneration) return;
           console.warn('⚠️ Music recovery play() failed:', err);
           isRecovering = false;
-          setTimeout(triggerStreamRecovery, RECOVERY_COOLDOWN_MS);
+          recoveryRetryTimer = setTimeout(triggerStreamRecovery, RECOVERY_COOLDOWN_MS);
         });
       }
+      pendingReadyHandler = onReady;
       if (audio.readyState >= 1) onReady();
       else audio.addEventListener('loadedmetadata', onReady, { once: true });
     }
@@ -138,6 +147,33 @@
     function stopWaitingTimeout() {
       _musicWaitingTimeout.stop();
     }
+    function resetStreamRecovery() {
+      recoveryGeneration++;
+      if (recoveryRetryTimer) {
+        clearTimeout(recoveryRetryTimer);
+        recoveryRetryTimer = null;
+      }
+      if (pendingReadyHandler) {
+        audio.removeEventListener('loadedmetadata', pendingReadyHandler);
+        pendingReadyHandler = null;
+      }
+      clearAllTimeouts();
+      hideLoadingOverlay();
+      stopStuckDetector();
+      stopWaitingTimeout();
+      isRecovering = false;
+      recoveryRetryCount = 0;
+      lastRecoveryTime = 0;
+      errorHandled = false;
+      _musicOverlay.hide();
+    }
+    window.__meelMusicResetRecovery = resetStreamRecovery;
+    window.addEventListener("pagehide", resetStreamRecovery);
+    window.addEventListener("pageshow", function (e) {
+      if (!e.persisted) return;
+      resetStreamRecovery();
+      if (!player.paused && !audio.paused && !audio.ended) startStuckDetector();
+    });
     audio.addEventListener('error', function () {
       var code = audio.error ? audio.error.code : 0;
       if (code === 2 && hasEverPlayed && !isRecovering) {
@@ -241,12 +277,7 @@
       clearAllTimeouts();
       hideLoadingOverlay();
     });
-    window.addEventListener("beforeunload", function () {
-      clearAllTimeouts();
-      hideLoadingOverlay();
-      stopStuckDetector();
-      stopWaitingTimeout();
-    });
+    window.addEventListener("beforeunload", resetStreamRecovery);
     let rafId = null,
       visLastTs = 0,
       visualizerOn = window.innerWidth >= 1024,

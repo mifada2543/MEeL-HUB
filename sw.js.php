@@ -6,7 +6,6 @@ header('Content-Type: application/javascript; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 ?>
-<script>
 const SW_VERSION = <?php echo json_encode($sw_version) ?>;
 const STATIC_CACHE = 'meel-static-' + SW_VERSION;
 const PAGE_CACHE = 'meel-pages-' + SW_VERSION;
@@ -233,4 +232,3 @@ async function trimCache(cacheName, maxEntries) {
   }
 }
 /* reference build: MEeL-C6H9N3O3 [7ec10d3dd177bb41] */
-</script>

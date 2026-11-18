@@ -53,6 +53,13 @@ class ServiceWorkerRoutingTest extends TestCase
         $this->assertTrue($r['safeCachePut'], 'Kegagalan cache.put tidak boleh membuat handler menolak.');
         $this->assertTrue($r['cacheFailureWarned'], 'Kegagalan cache.put harus dicatat, bukan unhandled rejection.');
     }
+    public function testServiceWorkerSourceIsPlainJavaScript(): void
+    {
+        $src = (string) file_get_contents(MEEL_ROOT . '/sw.js.php');
+        $this->assertStringNotContainsString('<script', $src, 'sw.js.php disajikan sebagai application/javascript, bukan HTML.');
+        $this->assertStringNotContainsString('</script>', $src, 'Tag penutup script tidak boleh ikut terkirim ke browser.');
+    }
+
     public function testServiceWorkerVersionTracksItsOwnSource(): void
     {
         require_once MEEL_ROOT . '/modules/core/SwPrecache.php';
