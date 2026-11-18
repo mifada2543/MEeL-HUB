@@ -1,14 +1,11 @@
 <?php
 require_once __DIR__ . '/modules/core/SwPrecache.php';
-
 $sw_precache_urls = SwPrecache::all();
 $sw_version = SwPrecache::version();
-
 header('Content-Type: application/javascript; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 ?>
-
 const SW_VERSION = <?php echo json_encode($sw_version) ?>;
 const STATIC_CACHE = 'meel-static-' + SW_VERSION;
 const PAGE_CACHE = 'meel-pages-' + SW_VERSION;
@@ -16,14 +13,10 @@ const PAGE_CACHE_MAX = 100;
 const THUMB_CACHE = 'meel-thumbs-' + SW_VERSION;
 const THUMB_TTL = 7 * 24 * 60 * 60 * 1000;
 const THUMB_CACHE_MAX = 400;
-
 const OFFLINE_URL = new URL('err/offline.php', self.registration.scope).href;
-
 const PRECACHE_URLS = <?php echo json_encode($sw_precache_urls, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) ?>;
-
 self.addEventListener('install', (event) => {
   console.log('[SW] Install ' + SW_VERSION);
-
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       return cache.addAll(PRECACHE_URLS).catch((err) => {
@@ -34,10 +27,8 @@ self.addEventListener('install', (event) => {
     })
   );
 });
-
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activate ' + SW_VERSION);
-
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -62,33 +53,28 @@ self.addEventListener('activate', (event) => {
     })
   );
 });
-
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
-
   if (request.method !== 'GET') return;
-
   if (url.origin !== location.origin) return;
-
+  if (isHlsMedia(url)) {
+    return;
+  }
   if (isApiRequest(url)) {
     return;
   }
-
   if (isMediaImage(url)) {
     event.respondWith(cacheFirstWithTtl(request, THUMB_CACHE, THUMB_TTL));
     return;
   }
-
   if (isStreamingMedia(url)) {
     return;
   }
-
   if (url.pathname.includes('/arcade/chess/assets/js/')) {
     event.respondWith(networkFirst(request, PAGE_CACHE));
     return;
   }
-
   if (isStaticAsset(url)) {
     if (url.searchParams.has('v')) {
       event.respondWith(cacheFirst(request, STATIC_CACHE));
@@ -97,51 +83,50 @@ self.addEventListener('fetch', (event) => {
     }
     return;
   }
-
   if (isPageRequest(request)) {
     event.respondWith(networkFirst(request, PAGE_CACHE, event.preloadResponse));
     return;
   }
-
   event.respondWith(networkFirst(request, PAGE_CACHE));
 });
-
+async function safeCachePut(cache, request, response) {
+  try {
+    await cache.put(request, response);
+  } catch (err) {
+    console.warn('[SW] Cache.put diabaikan:', err && err.name ? err.name : 'network error');
+  }
+}
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) return cached;
-
   try {
     const network = await fetch(request);
     if (network.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, network.clone());
+      await safeCachePut(cache, request, network.clone());
     }
     return network;
   } catch (err) {
     if (request.destination === 'document') {
       return caches.match(OFFLINE_URL);
     }
-
     return new Response('', { status: 200, headers: { 'Content-Type': 'text/plain' } });
   }
 }
-
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
   const networkPromise = fetch(request)
-    .then((response) => {
-      if (response.ok) cache.put(request, response.clone());
+    .then(async (response) => {
+      if (response.ok) await safeCachePut(cache, request, response.clone());
       return response;
     })
     .catch(() => null);
-
   if (cached) return cached;
   const network = await networkPromise;
   if (network) return network;
   return new Response('', { status: 503, headers: { 'Content-Type': 'text/plain' } });
 }
-
 async function cacheFirstWithTtl(request, cacheName, ttl) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
@@ -149,7 +134,6 @@ async function cacheFirstWithTtl(request, cacheName, ttl) {
     const cachedAt = Number(cached.headers.get('x-meel-cached-at') || 0);
     if (cachedAt > 0 && Date.now() - cachedAt < ttl) return cached;
   }
-
   try {
     const network = await fetch(request);
     const contentType = (network.headers.get('content-type') || '').toLowerCase();
@@ -158,7 +142,7 @@ async function cacheFirstWithTtl(request, cacheName, ttl) {
       const headers = new Headers(copy.headers);
       headers.set('x-meel-cached-at', String(Date.now()));
       const body = await copy.blob();
-      await cache.put(request, new Response(body, {
+      await safeCachePut(cache, request, new Response(body, {
         status: copy.status,
         statusText: copy.statusText,
         headers
@@ -171,7 +155,6 @@ async function cacheFirstWithTtl(request, cacheName, ttl) {
     return new Response('', { status: 504, headers: { 'Content-Type': 'text/plain' } });
   }
 }
-
 async function networkFirst(request, cacheName, preloadPromise) {
   try {
     let network = null;
@@ -180,41 +163,32 @@ async function networkFirst(request, cacheName, preloadPromise) {
       if (preload && preload.ok) network = preload;
     }
     if (!network) network = await fetch(request);
-
     if (network.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, network.clone());
-
+      await safeCachePut(cache, request, network.clone());
       trimCache(cacheName, PAGE_CACHE_MAX);
     }
     return network;
   } catch (err) {
     const cached = await caches.match(request);
     if (cached) return cached;
-
     if (request.destination === 'document') {
       return caches.match(OFFLINE_URL);
     }
-
     return new Response('', { status: 503, headers: { 'Content-Type': 'text/plain' } });
   }
 }
-
 function isThumbnail(url) {
   return /\/(video|music|books)\/upload\/thumbnail\//.test(url.pathname);
 }
-
 function isMediaImage(url) {
   return isThumbnail(url) || url.pathname.includes('/profile/upload/');
 }
-
 function isStaticAsset(url) {
   return /\.(css|js|woff2?|ttf|otf|eot|png|jpg|jpeg|gif|webp|svg|ico|webmanifest)$/i.test(url.pathname);
 }
-
 function isApiRequest(url) {
   const p = url.pathname;
-
   return p.includes('/controllers/') ||
          p.includes('/auth/') ||
          p.includes('/partials/engine/') ||
@@ -232,7 +206,6 @@ function isApiRequest(url) {
          p.includes('download') ||
          p.includes('post_encode') ||
          p.includes('download_transcode') ||
-
          /\/(api|system)\/[^/]+\/?$/.test(p) ||
          /\/(music|video|drive|books)\/stream\/?$/.test(p) ||
          /\/(music|video|books)\/search\/?$/.test(p) ||
@@ -240,16 +213,17 @@ function isApiRequest(url) {
          /\/music\/playlist-action\/?$/.test(p) ||
          /\/profile\/edit\/?$/.test(p);
 }
-
 function isStreamingMedia(url) {
   return /\.(mp4|webm|mkv|avi|mov|m4v|mp3|m4a|ogg|oga|wav|flac|aac|opus|pdf|epub|zip|rar|7z|tar|gz)$/i.test(url.pathname);
 }
-
+function isHlsMedia(url) {
+  return /\.(m3u8|ts|vtt)$/i.test(url.pathname) ||
+         /\/(video|music)\/upload\/(video|file)\//i.test(url.pathname);
+}
 function isPageRequest(request) {
   return request.destination === 'document' ||
          request.headers.get('Accept')?.includes('text/html');
 }
-
 async function trimCache(cacheName, maxEntries) {
   const cache = await caches.open(cacheName);
   const keys = await cache.keys();
@@ -257,5 +231,4 @@ async function trimCache(cacheName, maxEntries) {
     await cache.delete(keys[0]);
   }
 }
-
 /* reference build: MEeL-C6H9N3O3 [7ec10d3dd177bb41] */

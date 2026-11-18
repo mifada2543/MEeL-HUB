@@ -99,6 +99,72 @@ function showReconnectingIndicator() {
   }
   window._videoReconnectOverlay.show();
 }
+let probeController = null;
+let probeRetryTimer = null;
+let probeTimeout = null;
+let probeGeneration = 0;
+function cancelMediaProbe() {
+  probeGeneration++;
+  if (probeController) {
+    try {
+      probeController.abort();
+    } catch (err) {}
+    probeController = null;
+  }
+  if (probeRetryTimer) {
+    clearTimeout(probeRetryTimer);
+    probeRetryTimer = null;
+  }
+  if (probeTimeout) {
+    clearTimeout(probeTimeout);
+    probeTimeout = null;
+  }
+  isCheckingStatus = !1;
+}
+function scheduleProbeRetry(status) {
+  const serverError = status >= 500;
+  const step = serverError ? 1e4 : 3e3;
+  const cap = serverError ? 6e4 : 15e3;
+  probeRetryTimer = setTimeout(() => {
+    probeRetryTimer = null;
+    if (document.hidden) {
+      isCheckingStatus = !1;
+      return;
+    }
+    isCheckingStatus = !1;
+    checkMediaAndRecover();
+  }, Math.min(step * (recoveryRetryCount + 1), cap));
+}
+function probeOnline() {
+  console.log("Media terdeteksi online! Memulai pemulihan...");
+  recoveryRetryCount = 0;
+  lastSuccessfulRecovery = Date.now();
+  const e = player ? player.currentTime : 0;
+  (e > 0 && localStorage.setItem(storageKeyVideo, e),
+    window._videoReconnectOverlay && window._videoReconnectOverlay.hide(),
+    (isCheckingStatus = !1));
+  if (typeof isMiniPlayerActive !== "undefined" && isMiniPlayerActive) {
+    try {
+      hls && hls.startLoad(Math.max(0, (player ? player.currentTime : 0) - 1));
+    } catch (err) {}
+    try {
+      if (player && player.paused && !player.ended) {
+        const p = player.play();
+        p && p.catch && p.catch(function () {});
+      }
+    } catch (err) {}
+  } else {
+    ((isRecovering = !0),
+      (isAutoRecovering = !0),
+      window.htmx
+        ? htmx.ajax("GET", window.__meelWatchUrl || window.location.href, {
+            target: "#main-video-wrapper",
+            select: "#main-video-wrapper",
+            swap: "outerHTML",
+          })
+        : window.location.reload());
+  }
+}
 function checkMediaAndRecover() {
   if (isCheckingStatus) return;
 
@@ -125,67 +191,58 @@ function checkMediaAndRecover() {
   ((isCheckingStatus = !0),
     showReconnectingIndicator(),
     console.log(`Mengecek ketersediaan file media di: ${videoSrc}`));
-  const e = new AbortController(),
-    t = setTimeout(() => {
-      e.abort();
-    }, 3e3);
-  fetch(videoSrc, { method: "GET", signal: e.signal })
-    .then((e) => {
-      clearTimeout(t);
-      const n = e.headers.get("content-type") || "";
-      if (e.ok && !n.includes("text/html")) {
-        (console.log("Media terdeteksi online! Memulai pemulihan..."),
-          (recoveryRetryCount = 0),
-          (lastSuccessfulRecovery = Date.now()));
-        const e = player ? player.currentTime : 0;
-        (e > 0 && localStorage.setItem(storageKeyVideo, e),
-          window._videoReconnectOverlay && window._videoReconnectOverlay.hide(),
-          (isCheckingStatus = !1));
-        if (typeof isMiniPlayerActive !== "undefined" && isMiniPlayerActive) {
-          try {
-            hls && hls.startLoad(Math.max(0, (player ? player.currentTime : 0) - 1));
-          } catch (err) {}
-          try {
-            if (player && player.paused && !player.ended) {
-              const p = player.play();
-              p && p.catch && p.catch(function () {});
-            }
-          } catch (err) {}
-        } else {
-          ((isRecovering = !0),
-            (isAutoRecovering = !0),
-            window.htmx
-              ? htmx.ajax("GET", window.__meelWatchUrl || window.location.href, {
-                  target: "#main-video-wrapper",
-                  select: "#main-video-wrapper",
-                  swap: "outerHTML",
-                })
-              : window.location.reload());
-        }
-      } else
-        (console.log(
-          "Media masih offline (kembalian server bukan file media). Menguji ulang...",
-        ),
-          setTimeout(() => {
-            if (document.hidden) {
-              isCheckingStatus = !1;
-              return;
-            }
-            ((isCheckingStatus = !1), checkMediaAndRecover());
-          }, Math.min(3e3 * (recoveryRetryCount + 1), 15e3)));
-    })
-    .catch((e) => {
-      (clearTimeout(t),
+  const generation = ++probeGeneration;
+  const controller = new AbortController();
+  probeController = controller;
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 3e3);
+  probeTimeout = timeout;
+  fetch(videoSrc, {
+    method: "GET",
+    cache: "no-store",
+    signal: controller.signal,
+  })
+    .then(async (response) => {
+      if (generation !== probeGeneration) return;
+      const contentType = (response.headers.get("content-type") || "").toLowerCase();
+      if (!response.ok) {
+        clearTimeout(timeout);
+        probeTimeout = null;
+        probeController = null;
         console.log(
-          "Koneksi media gagal/offline atau timeout. Menguji ulang...",
-        ),
-        setTimeout(() => {
-          if (document.hidden) {
-            isCheckingStatus = !1;
-            return;
-          }
-          ((isCheckingStatus = !1), checkMediaAndRecover());
-        }, Math.min(3e3 * (recoveryRetryCount + 1), 15e3)));
+          "Media belum siap (status " + response.status + ", tipe " + contentType + "). Menguji ulang...",
+        );
+        scheduleProbeRetry(response.status);
+        return;
+      }
+      let head = "";
+      try {
+        head = (await response.text()).slice(0, 256);
+      } catch (err) {}
+      if (generation !== probeGeneration) return;
+      clearTimeout(timeout);
+      probeTimeout = null;
+      probeController = null;
+      const mediaOk = isHls
+        ? head.trimStart().startsWith("#EXTM3U")
+        : contentType.startsWith("video/") || contentType.startsWith("audio/");
+      if (!mediaOk) {
+        console.log(
+          "Media masih offline (kembalian server bukan file media). Menguji ulang...",
+        );
+        scheduleProbeRetry(response.status);
+        return;
+      }
+      probeOnline();
+    })
+    .catch((err) => {
+      if (generation !== probeGeneration) return;
+      clearTimeout(timeout);
+      probeTimeout = null;
+      probeController = null;
+      console.log("Koneksi media gagal/offline atau timeout. Menguji ulang...");
+      scheduleProbeRetry(0);
     });
 }
 function triggerPlayerRecovery() {
@@ -314,4 +371,10 @@ if (!window._meelRecoveryVisBound) {
     console.log("Tab aktif kembali, menjalankan pemulihan yang tertunda.");
     triggerPlayerRecovery();
   });
+  document.addEventListener("htmx:beforeSwap", function (event) {
+    const detail = event && event.detail;
+    const target = detail && detail.target;
+    if (target && target.id === "main-video-wrapper") cancelMediaProbe();
+  });
+  window.addEventListener("pagehide", cancelMediaProbe);
 }

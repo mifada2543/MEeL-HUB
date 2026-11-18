@@ -199,6 +199,8 @@ __pycache__/
 
 # ─── CHAT STORAGE (JSON files — runtime data) ────────
 storage/chats/**/*.json
+# Lock file untuk sinkronisasi baca/ubah/tulis percakapan admin.
+storage/chats/**/.lock
 
 # ---Another----
 skills-lock.json

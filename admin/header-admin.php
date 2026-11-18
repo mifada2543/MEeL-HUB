@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/../modules/core/Modules.php';
+require_once __DIR__ . '/../modules/core/base_url.php';
+$nav_root = meel_base_url_path();
 
 if (!isset($is_admin)) {
     $is_admin = (isset($_SESSION['user_id']) && isset($conn)
@@ -8,10 +10,13 @@ if (!isset($is_admin)) {
 
 if (!isset($back_url)) {
     if ($is_admin) {
-        $back_url = 'index.php';
+        $back_url = $nav_root . '/admin/beranda';
     } else {
         $back_url = '../index.php';
     }
+}
+if ($is_admin && in_array($back_url, ['index.php', '.', './index.php'], true)) {
+    $back_url = $nav_root . '/admin/beranda';
 }
 
 $nav_page_title = $page_title ?? 'Edit';
@@ -36,15 +41,15 @@ $nav_page_labels = [
 $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
 ?>
 <nav class="sticky top-0 z-50 bg-[#080b11]/90 backdrop-blur-md border-b border-white/5 px-6 h-14 flex items-center gap-3">
-    <a href="../" class="font-sans text-sm font-extrabold text-white no-underline tracking-wider">
+    <a href="<?= htmlspecialchars($nav_root . '/', ENT_QUOTES, 'UTF-8') ?>" class="font-sans text-sm font-extrabold text-white no-underline tracking-wider">
         MEeL<?php if ($is_admin): ?><span class="text-blue-500">Admin</span><?php endif; ?>
     </a>
     <div class="w-px h-5 bg-white/10"></div>
 
     <?php if ($is_admin): ?>
-        <a href="." class="text-[11px] font-semibold text-gray-400 no-underline hover:text-gray-300 transition-colors">Dasbor</a>
+        <a href="<?= htmlspecialchars($nav_root . '/admin/beranda', ENT_QUOTES, 'UTF-8') ?>" class="admin-header-dashboard text-[11px] font-semibold text-gray-400 no-underline hover:text-gray-300 transition-colors">Dasbor</a>
         <?php if ($nav_current_page !== 'dashboard'): ?>
-            <span class="text-gray-600">›</span>
+            <span class="admin-header-separator text-gray-600">›</span>
             <span class="text-[11px] font-semibold text-gray-200"><?= htmlspecialchars($nav_current_label) ?></span>
         <?php endif; ?>
     <?php else: ?>
@@ -71,7 +76,7 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
                 #<?= $nav_id ?>
             </span>
         <?php endif; ?>
-        <a href="<?= htmlspecialchars($back_url) ?>" class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 py-1.5 px-3.5 rounded-lg border border-white/10 bg-white/5 no-underline transition-all duration-200 hover:text-gray-200 hover:bg-white/10">
+        <a href="<?= htmlspecialchars($back_url) ?>" class="admin-header-back inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 py-1.5 px-3.5 rounded-lg border border-white/10 bg-white/5 no-underline transition-all duration-200 hover:text-gray-200 hover:bg-white/10">
             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
             Kembali
         </a>

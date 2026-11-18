@@ -1,6 +1,5 @@
 <?php
 use PHPUnit\Framework\TestCase;
-
 /**
  * @coversNothing
  */
@@ -17,7 +16,6 @@ class VideoLoopRecoveryTest extends TestCase
         }
         return $available;
     }
-
     private function runHarness(string $scenario): array
     {
         if (!self::nodeAvailable()) {
@@ -25,17 +23,14 @@ class VideoLoopRecoveryTest extends TestCase
         }
         $harness = MEEL_ROOT . '/tests/js/video-loop-recovery.harness.js';
         $this->assertFileExists($harness, 'Harness tidak ditemukan.');
-
         $output = [];
         $exit = 0;
         exec('node ' . escapeshellarg($harness) . ' ' . escapeshellarg($scenario) . ' 2>&1', $output, $exit);
         $this->assertSame(0, $exit, 'Harness gagal: ' . implode("\n", $output));
-
         $decoded = json_decode(end($output), true);
         $this->assertIsArray($decoded, 'Output harness bukan JSON: ' . implode("\n", $output));
         return $decoded;
     }
-
     public function testDecodeErrorSelfHealsWithoutRecoveryWhenPlaybackResumes(): void
     {
         $r = $this->runHarness('selfheal-success');
@@ -58,7 +53,6 @@ class VideoLoopRecoveryTest extends TestCase
         );
         $this->assertTrue($r['selfHealedLogged'], 'Harus ada log konfirmasi self-heal berhasil');
     }
-
     public function testDecodeErrorEscalatesWhenPlaybackStaysFrozen(): void
     {
         $r = $this->runHarness('selfheal-escalate');
@@ -73,7 +67,6 @@ class VideoLoopRecoveryTest extends TestCase
         );
         $this->assertTrue($r['escalationLogged'], 'Eskalasi harus ada jejak log');
     }
-
     public function testGracePeriodBlocksTriggersFromOtherSources(): void
     {
         $r = $this->runHarness('grace-blocks-stuck');
@@ -84,7 +77,6 @@ class VideoLoopRecoveryTest extends TestCase
         );
         $this->assertTrue($r['graceLogPresent'], 'Harus ada log saat recovery ditahan grace period');
     }
-
     public function testRepeatedErrorsOpenOnlyOneGraceWindow(): void
     {
         $r = $this->runHarness('selfheal-double-error');
@@ -94,7 +86,6 @@ class VideoLoopRecoveryTest extends TestCase
             'Error beruntun tidak boleh menumpuk grace window / recoverMediaError'
         );
     }
-
     public function testUnsupportedSourceStillTriggersFullRecovery(): void
     {
         $r = $this->runHarness('unsupported-src-still-recovers');
@@ -108,7 +99,6 @@ class VideoLoopRecoveryTest extends TestCase
             'Kode 4 tidak bolehdicoba self-heal'
         );
     }
-
     public function testNetworkErrorUsesStartLoadInsteadOfRecoverMediaError(): void
     {
         $r = $this->runHarness('network-error-heals');
@@ -122,6 +112,75 @@ class VideoLoopRecoveryTest extends TestCase
             'Kode 2 tidak boleh memakai recoverMediaError() (itu khusus decode)'
         );
     }
-}
+    public function testPlainTextProbeIsNeverReportedAsOnline(): void
+    {
+        $r = $this->runHarness('probe-stale-text-rejected');
 
+        $this->assertTrue($r['noOnlineLog'], 'Teks biasa (mis. respons 503 buatan SW) tidak boleh dianggap media online.');
+        $this->assertTrue($r['notResetRetry'], 'Probe palsu tidak boleh mereset penghitung retry.');
+        $this->assertTrue($r['retryScheduled'], 'Probe gagal harus menjadwalkan percobaan ulang.');
+    }
+    public function testServerErrorDoesNotResetRecoveryBudget(): void
+    {
+        $r = $this->runHarness('probe-503-not-online');
+
+        $this->assertTrue($r['noOnlineLog'], '503 tidak boleh dianggap media online.');
+        $this->assertTrue($r['notResetRetry'], '503 tidak boleh mereset penghitung retry.');
+        $this->assertTrue($r['statusLogged'], 'Status 503 harus tercatat di log untuk diagnosis.');
+    }
+    public function testValidPlaylistStillStartsRecovery(): void
+    {
+        $r = $this->runHarness('probe-valid-manifest');
+
+        $this->assertTrue($r['onlineLog'], 'Manifest #EXTM3U yang valid tetap memicu recovery.');
+        $this->assertTrue($r['retryReset'], 'Recovery yang sah boleh mereset penghitung retry.');
+    }
+    public function testPendingProbeIsAbortedWhenPlayerWrapperIsSwapped(): void
+    {
+        $r = $this->runHarness('probe-aborted-on-swap');
+
+        $this->assertTrue($r['abortOnSwap'], 'Probe yang masih berjalan harus di-abort saat wrapper diganti.');
+        $this->assertTrue($r['timersCleared'], 'Timer retry harus dibersihkan saat wrapper diganti.');
+    }
+    public function testHiddenTabStopsProbeRetries(): void
+    {
+        $r = $this->runHarness('probe-hidden-no-retry');
+        $this->assertTrue($r['noRetryWhileHidden'], 'Tab tersembunyi tidak boleh terus membanjiri server dengan probe.');
+    }
+    public function testSlowResponseBodyCanStillBeAborted(): void
+    {
+        $r = $this->runHarness('probe-slow-body-cancel');
+
+        $this->assertTrue($r['abortDuringBody'], 'Badan yang mandek harus bisa di-abort.');
+        $this->assertTrue($r['noRetryAfterCancel'], 'Probe yang dibatalkan tidak boleh menjadwalkan retry.');
+        $this->assertTrue($r['staleResultIgnored'], 'Hasil probe lama harus diabaikan.');
+    }
+    public function testStaleProbeRejectionDoesNotEraseNewProbe(): void
+    {
+        $r = $this->runHarness('probe-stale-rejection');
+        $this->assertTrue($r['newProbeAborted'], 'Callback probe lama tidak boleh menghapus controller probe baru.');
+    }
+    public function testPlainVideoStillUsesContentTypeValidation(): void
+    {
+        $r = $this->runHarness('probe-mp4-video-online');
+
+        $this->assertTrue($r['onlineLog'], 'Video non-HLS dengan tipe video/mp4 harus tetap dianggap online.');
+        $this->assertTrue($r['retryReset'], 'Probe video biasa yang valid boleh mereset retry.');
+    }
+    public function testBfcacheMiniPlayerRebuildsHlsWithoutFullReload(): void
+    {
+        $r = $this->runHarness('bfcache-mini-rebuild');
+
+        $this->assertTrue($r['hlsRebuilt'], 'Mini-player harus membangun Hls/worker baru.');
+        $this->assertTrue($r['playerKept'], 'Plyr yang masih sehat tidak perlu dihancurkan.');
+        $this->assertTrue($r['noReload'], 'Mini-player tidak perlu memuat ulang halaman.');
+    }
+    public function testBfcacheRestoreTearsDownStalePlayer(): void
+    {
+        $r = $this->runHarness('bfcache-teardown');
+
+        $this->assertTrue($r['playerDestroyed'], 'Restore bfcache harus menghancurkan player lama sebelum reload.');
+        $this->assertTrue($r['locationReloaded'], 'Restore bfcache tanpa mini-player harus memuat ulang halaman.');
+    }
+}
 /* reference build: MEeL-C10H15N [video-loop-recovery-test] */

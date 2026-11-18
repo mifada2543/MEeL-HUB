@@ -9,7 +9,6 @@ class HelpersTest extends TestCase
     {
         $this->assertSame($expected, format_bytes($bytes, $precision));
     }
-
     public static function bytesProvider(): array
     {
         return [
@@ -24,7 +23,6 @@ class HelpersTest extends TestCase
             'large GB' => [10.5 * 1024 * 1024 * 1024, 1, '10.5 GB'],
         ];
     }
-
     /** @dataProvider timeAgoProvider */
     public function testTimeAgo(int $secondsAgo, string $expectedRegex): void
     {
@@ -32,7 +30,6 @@ class HelpersTest extends TestCase
         $result = time_ago($timestamp);
         $this->assertMatchesRegularExpression($expectedRegex, $result);
     }
-
     public static function timeAgoProvider(): array
     {
         return [
@@ -45,13 +42,11 @@ class HelpersTest extends TestCase
             'years' => [31104000 * 1, '/1 tahun yang lalu/'],
         ];
     }
-
     /** @dataProvider mimeTypeProvider */
     public function testGetAudioMimeType(string $ext, string $expected): void
     {
         $this->assertSame($expected, get_audio_mime_type($ext));
     }
-
     public static function mimeTypeProvider(): array
     {
         return [
@@ -65,13 +60,11 @@ class HelpersTest extends TestCase
             'unknown' => ['aac', 'audio/ogg'],
         ];
     }
-
     /** @dataProvider formatLabelProvider */
     public function testGetAudioFormatLabel(string $ext, string $expected): void
     {
         $this->assertSame($expected, get_audio_format_label($ext));
     }
-
     public static function formatLabelProvider(): array
     {
         return [
@@ -83,7 +76,6 @@ class HelpersTest extends TestCase
             'm4a' => ['m4a', 'M4A'],
         ];
     }
-
     /** @dataProvider formatDescriptionProvider */
     public function testGetAudioFormatDescription(string $ext, string $expectedContains): void
     {
@@ -91,7 +83,6 @@ class HelpersTest extends TestCase
         $this->assertStringContainsString($expectedContains, $result);
         $this->assertStringContainsString('codec', $result);
     }
-
     public static function formatDescriptionProvider(): array
     {
         return [
@@ -102,7 +93,6 @@ class HelpersTest extends TestCase
             'flac' => ['flac', 'terbaik'],
         ];
     }
-
     public function testDetectProtocolDefaultHttp(): void
     {
         $origHttps = $_SERVER['HTTPS'] ?? null;
@@ -111,14 +101,11 @@ class HelpersTest extends TestCase
         unset($_SERVER['HTTPS']);
         unset($_SERVER['HTTP_X_FORWARDED_PROTO']);
         unset($_SERVER['HTTP_CF_VISITOR']);
-
         $protocol = detectProtocol();
         $this->assertSame('http', $protocol);
-
         if ($origHttps !== null) $_SERVER['HTTPS'] = $origHttps;
         if ($origForwardedProto !== null) $_SERVER['HTTP_X_FORWARDED_PROTO'] = $origForwardedProto;
     }
-
     public function testBaseUrl(): void
     {
         $result = base_url('index.php');
@@ -130,7 +117,6 @@ class HelpersTest extends TestCase
         $result3 = base_url('css/style.css');
         $this->assertStringEndsWith('/css/style.css', $result3);
     }
-
     public function testBaseUrlFallbackFromProjectRoot(): void
     {
         $helpers = MEEL_ROOT . '/modules/core/helpers.php';
@@ -147,12 +133,41 @@ class HelpersTest extends TestCase
         $output = [];
         $exit = 0;
         exec(PHP_BINARY . ' -d display_errors=0 -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
-
         $this->assertSame(0, $exit, 'Subprocess helpers gagal: ' . implode("\n", $output));
         $this->assertCount(1, $output, 'Output subprocess tidak valid: ' . implode("\n", $output));
         $this->assertSame($expected . '/auth/login.php?next=x', trim($output[0]));
     }
+    /**
+     * CI meng-checkout repo ke folder "MEeL-HUB", bukan "MEeL". Base path
+     * harus mengikuti nama direktori apa pun, bukan hardcoded.
+     */
+    public function testBaseUrlPathFollowsAnyDirectoryName(): void
+    {
+        $tmp = MEEL_ROOT . '/temp/base_url_ci_' . bin2hex(random_bytes(4));
+        $fakeCore = $tmp . '/MEeL-HUB/modules/core';
+        @mkdir($fakeCore, 0777, true);
+        copy(MEEL_ROOT . '/modules/core/base_url.php', $fakeCore . '/base_url.php');
+        try {
+            $code = '$_SERVER["DOCUMENT_ROOT"]=' . var_export($tmp, true) . ';'
+                . 'require ' . var_export($fakeCore . '/base_url.php', true) . ';'
+                . 'echo meel_base_url_path();';
+            $output = [];
+            $exit = 0;
+            exec(PHP_BINARY . ' -d display_errors=0 -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
 
+            $this->assertSame(0, $exit, 'Subprocess base_url gagal: ' . implode("\n", $output));
+            $this->assertSame('/MEeL-HUB', trim(implode("\n", $output)));
+        } finally {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($tmp, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($it as $file) {
+                $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
+            }
+            @rmdir($tmp);
+        }
+    }
     public function testCheckDiskSpaceOnExistingPath(): void
     {
         $result = check_disk_space(1, MEEL_ROOT);
@@ -162,7 +177,6 @@ class HelpersTest extends TestCase
         $this->assertArrayHasKey('path', $result);
         $this->assertSame(1, $result['required']);
     }
-
     public function testCheckDiskSpaceOnNonExistentPath(): void
     {
         $result = check_disk_space(100, '/nonexistent/path/that/doesnt/exist');
@@ -170,7 +184,6 @@ class HelpersTest extends TestCase
         $this->assertArrayHasKey('free', $result);
         $this->assertArrayHasKey('path', $result);
     }
-
     public function testCsrfTokenFunctions(): void
     {
         $_SESSION['csrf_token'] = 'test_token_123';
@@ -179,13 +192,11 @@ class HelpersTest extends TestCase
         $this->assertTrue(verify_csrf_token('test_token_123'));
         $this->assertFalse(verify_csrf_token('wrong_token'));
     }
-
     public function testDirSizeOnNonExistentPath(): void
     {
         $size = dir_size('/nonexistent/path/xxx');
         $this->assertSame(0.0, $size);
     }
-
     public function testDirSizeOnExistingDirectory(): void
     {
         $testDir = MEEL_ROOT . '/temp/dirsize_test';
@@ -200,7 +211,6 @@ class HelpersTest extends TestCase
         @unlink($testDir . '/test.txt');
         @rmdir($testDir);
     }
-
     public function testGenerateSearchMetadataWithAliases(): void
     {
         if (!function_exists('meel_mecab_available') || !meel_mecab_available()) {
@@ -212,14 +222,12 @@ class HelpersTest extends TestCase
         $this->assertStringContainsString('purojekutosekai', $result);
         $this->assertSame(mb_strtolower($result, 'UTF-8'), $result);
     }
-
     public function testGenerateSearchMetadataPlainText(): void
     {
         $result = generate_search_metadata('Hello World Test');
         $this->assertStringContainsString('hello world test', $result);
         $this->assertSame(mb_strtolower($result, 'UTF-8'), $result);
     }
-
     public function testLangMapHasAllLanguages(): void
     {
         $map = lang_map();
@@ -229,27 +237,23 @@ class HelpersTest extends TestCase
         $this->assertSame('日本語', $map['ja']);
         $this->assertArrayHasKey('vi', $map);
     }
-
     public function testLangLabelKnownLanguage(): void
     {
         $this->assertSame('Indonesia', lang_label('id'));
         $this->assertSame('English', lang_label('EN'));
         $this->assertSame('日本語', lang_label('ja'));
     }
-
     public function testLangLabelUnknownFallsBackToUppercase(): void
     {
         $this->assertSame('XX', lang_label('xx'));
         $this->assertSame('PT-BR', lang_label('pt-br'));
     }
-
     public function testLangLabelConsistentWithMap(): void
     {
         foreach (lang_map() as $code => $label) {
             $this->assertSame($label, lang_label($code));
         }
     }
-
     public function testSubtitleAliasesMatchGeneric(): void
     {
         $this->assertSame(lang_map(), subtitle_lang_map());
@@ -257,5 +261,4 @@ class HelpersTest extends TestCase
         $this->assertSame(lang_label('pt-br'), subtitle_lang_label('pt-br'));
     }
     }
-
 /* reference build: MEeL-C4H9NO2 [8ace15947c86ea7b] */

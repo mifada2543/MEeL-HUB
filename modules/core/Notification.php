@@ -15,8 +15,11 @@ class Notification
 
         $stmt = $conn->prepare("INSERT INTO user_notifications (user_id, type, title, message, related_id, related_slug, actor_user_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("isssisi", $userId, $type, $title, $message, $relatedId, $relatedSlug, $actorUserId);
-        $stmt->execute();
+        $ok = $stmt->execute();
         $stmt->close();
+        if (!$ok && $type === 'admin_chat') {
+            throw new RuntimeException('Cannot create chat notification');
+        }
     }
 
     private static function isCoalesced(\mysqli $conn, int $userId, string $type): bool
@@ -143,6 +146,19 @@ class Notification
     {
         $stmt = $conn->prepare("DELETE FROM user_notifications WHERE user_id = ? AND type = 'admin_chat' AND message = ? AND actor_user_id = ?");
         $stmt->bind_param("isi", $userId, $message, $actorUserId);
+        $ok = $stmt->execute();
+        $stmt->close();
+        return $ok;
+    }
+
+    public static function deleteByChatId(\mysqli $conn, int $userId, string $messageId): bool
+    {
+        if (!preg_match('/^[a-f0-9]{32}$/D', $messageId)) {
+            throw new InvalidArgumentException('Invalid chat message ID');
+        }
+        $slug = 'chat:' . $messageId;
+        $stmt = $conn->prepare("DELETE FROM user_notifications WHERE user_id = ? AND type = 'admin_chat' AND related_slug = ?");
+        $stmt->bind_param('is', $userId, $slug);
         $ok = $stmt->execute();
         $stmt->close();
         return $ok;
