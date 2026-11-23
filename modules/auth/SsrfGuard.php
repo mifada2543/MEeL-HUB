@@ -196,6 +196,9 @@ final class SsrfGuard
         if (substr($binary, 0, 12) === "\0\0\0\0\0\0\0\0\0\0\xff\xff") {
             return $this->isPrivateIpv4(substr($binary, 12, 4));
         }
+        if (substr($binary, 0, 12) === str_repeat("\0", 12)) {
+            return $this->isPrivateIpv4(substr($binary, 12, 4));
+        }
         if (substr($binary, 0, 8) === "\x00\x64\xff\x9b\x00\x00\x00\x00") return true;
         if (substr($binary, 0, 8) === "\x01\x00\x00\x00\x00\x00\x00\x00") return true;
         if (substr($binary, 0, 4) === "\x20\x01\x0d\xb8") return true;

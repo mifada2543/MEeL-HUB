@@ -28,6 +28,7 @@ function advance(ms) {
   }
 }
 const logs = { warn: [], log: [] };
+const overlayCalls = [];
 const docListeners = {};
 const winListeners = {};
 let abortCount = 0;
@@ -113,7 +114,12 @@ const sandbox = {
       this._m.delete(k);
     },
   },
-  sessionStorage: { getItem: () => null, removeItem: () => {} },
+  sessionStorage: {
+    _m: new Map(),
+    getItem(k) { return this._m.has(k) ? this._m.get(k) : null; },
+    setItem(k, v) { this._m.set(k, String(v)); },
+    removeItem(k) { this._m.delete(k); },
+  },
   document: {
     hidden: false,
     readyState: "complete",
@@ -129,6 +135,7 @@ const sandbox = {
   addEventListener: (type, fn) => {
     (winListeners[type] = winListeners[type] || []).push(fn);
   },
+  name: "",
   location: { reload: () => { reloadCount++; } },
   fetch: fakeFetch,
   AbortController: class {
@@ -174,7 +181,11 @@ const sandbox = {
   }, { Events: { MANIFEST_PARSED: "manifestParsed" } }),
   meelCreateStuckDetector: () => ({ start() {}, stop() {} }),
   meelCreateWaitingTimeout: () => ({ start() {}, stop() {} }),
-  meelCreateReconnectOverlay: () => ({ show() {}, hide() {}, showFailed() {} }),
+  meelCreateReconnectOverlay: () => ({
+    show: () => overlayCalls.push("show"),
+    hide: () => overlayCalls.push("hide"),
+    showFailed: () => overlayCalls.push("showFailed"),
+  }),
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
@@ -186,7 +197,7 @@ sandbox.useHls = function () {
     startLoad(pos) {
       hlsCalls.push("startLoad:" + pos);
     },
-    destroy() {},
+    destroy() { hlsCalls.push("destroy"); },
   };
 };
 sandbox.useHls();
@@ -264,6 +275,7 @@ function probeResponseFor(ok, status, contentType, body) {
 }
 (async () => {
   const flush = () => new Promise((resolve) => setImmediate(resolve));
+  const authKey = "meel_stream_auth_reload:" + sandbox.videoSrc;
 
   if (scenario === "probe-stale-text-rejected") {
     probeResponse = probeResponseFor(true, 200, "text/plain", "storage unavailable");
@@ -390,6 +402,69 @@ function probeResponseFor(ok, status, contentType, body) {
     (winListeners["pageshow"] || []).forEach((fn) => fn({ persisted: true }));
     R.playerDestroyed = destroyCount > before;
     R.locationReloaded = reloadCount === 1;
+  }
+  if (scenario === "probe-403-auth") {
+    probeResponse = probeResponseFor(false, 403, "text/html; charset=utf-8", "");
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.reloadedOnce = reloadCount === 1;
+    R.noRetryTimer = timers.length === 0;
+    R.overlayHidden = overlayCalls.includes("hide");
+    R.staleHlsDestroyed = hlsCalls.includes("destroy");
+    R.markerSet = sandbox.sessionStorage.getItem(authKey) === "1" || sandbox.name.includes(authKey);
+  }
+  if (scenario === "probe-403-repeat") {
+    sandbox.sessionStorage.setItem(authKey, "1");
+    probeResponse = probeResponseFor(false, 403, "text/html; charset=utf-8", "");
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.noSecondReload = reloadCount === 0;
+    R.failedShown = overlayCalls.includes("showFailed");
+  }
+  if (scenario === "probe-403-cleared") {
+    sandbox.sessionStorage.setItem(authKey, "1");
+    sandbox.name = authKey;
+    probeResponse = probeResponseFor(true, 200, "application/vnd.apple.mpegurl", "#EXTM3U\nclip.ts\n");
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.markerCleared = sandbox.sessionStorage.getItem(authKey) === null && !sandbox.name.includes(authKey);
+  }
+  if (scenario === "probe-403-storage-blocked") {
+    sandbox.sessionStorage = {
+      getItem() { throw new Error("blocked"); },
+      setItem() { throw new Error("blocked"); },
+      removeItem() { throw new Error("blocked"); },
+    };
+    probeResponse = probeResponseFor(false, 403, "text/html; charset=utf-8", "");
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.firstReload = reloadCount === 1;
+    R.nameMarkerSet = sandbox.name.includes(authKey);
+  }
+  if (scenario === "probe-403-name-marker") {
+    sandbox.name = authKey;
+    probeResponse = probeResponseFor(false, 403, "text/html; charset=utf-8", "");
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.noSecondReload = reloadCount === 0;
+    R.failedShown = overlayCalls.includes("showFailed");
+  }
+  if (scenario === "probe-403-key-follows-video") {
+    const nextSrc = "upload/video/lain/lain.m3u8";
+    sandbox.sessionStorage.setItem("meel_stream_auth_reload:" + nextSrc, "1");
+    sandbox.videoSrc = nextSrc;
+    probeResponse = probeResponseFor(false, 403, "text/html; charset=utf-8", "");
+    sandbox.triggerPlayerRecovery();
+    await flush();
+    R.noSecondReload = reloadCount === 0;
+    R.failedShown = overlayCalls.includes("showFailed");
+  }
+  if (scenario === "clear-marker-call") {
+    sandbox.sessionStorage.setItem(authKey, "1");
+    sandbox.name = "other|" + authKey;
+    sandbox.__meelClearAuthReloadMarker();
+    R.storageCleared = sandbox.sessionStorage.getItem(authKey) === null;
+    R.nameCleared = !sandbox.name.includes(authKey) && sandbox.name === "other";
   }
   R.scenario = scenario;
   process.stdout.write(JSON.stringify(R) + "\n");

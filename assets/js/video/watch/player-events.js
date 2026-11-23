@@ -633,6 +633,7 @@ function setupMeelPlayerEvents() {
         startStuckDetector());
     }),
     player.on("playing", () => {
+       window.__meelClearAuthReloadMarker && window.__meelClearAuthReloadMarker();
       ((hasEverPlayed = !0),
         stopPlaybackStartTimeout(),
         (lastTimeUpdateTimestamp = Date.now()),

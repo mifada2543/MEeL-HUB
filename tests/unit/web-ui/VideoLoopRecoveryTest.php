@@ -175,6 +175,51 @@ class VideoLoopRecoveryTest extends TestCase
         $this->assertTrue($r['playerKept'], 'Plyr yang masih sehat tidak perlu dihancurkan.');
         $this->assertTrue($r['noReload'], 'Mini-player tidak perlu memuat ulang halaman.');
     }
+    public function testAuthorizationFailureReloadsOnceInsteadOfRetrying(): void
+    {
+        $r = $this->runHarness('probe-403-auth');
+        $this->assertTrue($r['reloadedOnce'], '403 harus memicu reload penuh untuk memperbarui token stream.');
+        $this->assertTrue($r['noRetryTimer'], '403 tidak boleh masuk loop retry "media offline".');
+        $this->assertTrue($r['overlayHidden'], 'Overlay reconnect harus ditutup sebelum reload.');
+        $this->assertTrue($r['staleHlsDestroyed'], 'Hls/worker blob usang harus dilepas sebelum reload.');
+        $this->assertTrue($r['markerSet'], 'Penanda reload sekali pakai harus dicatat.');
+    }
+    public function testRepeatedAuthorizationFailureStopsWithVisibleError(): void
+    {
+        $r = $this->runHarness('probe-403-repeat');
+
+        $this->assertTrue($r['noSecondReload'], 'Reload kedua tidak boleh terjadi (anti reload loop).');
+        $this->assertTrue($r['failedShown'], 'Pengguna harus melihat pesan gagal bila otorisasi tetap ditolak.');
+    }
+    public function testSuccessfulProbeClearsAuthorizationMarker(): void
+    {
+        $r = $this->runHarness('probe-403-cleared');
+        $this->assertTrue($r['markerCleared'], 'Penanda harus dihapus setelah media valid kembali.');
+    }
+    public function testBlockedStorageStillGuardsReloadLoop(): void
+    {
+        $r = $this->runHarness('probe-403-storage-blocked');
+        $this->assertTrue($r['firstReload'], 'Storage diblokir tidak boleh menghalangi reload pertama.');
+        $this->assertTrue($r['nameMarkerSet'], 'Fallback window.name harus dipakai bila sessionStorage diblokir.');
+    }
+    public function testNameMarkerAlsoStopsSecondReload(): void
+    {
+        $r = $this->runHarness('probe-403-name-marker');
+        $this->assertTrue($r['noSecondReload'], 'Penanda di window.name juga harus mencegah reload kedua.');
+        $this->assertTrue($r['failedShown'], 'Pesan gagal tetap harus muncul.');
+    }
+    public function testAuthorizationMarkerFollowsCurrentVideo(): void
+    {
+        $r = $this->runHarness('probe-403-key-follows-video');
+        $this->assertTrue($r['noSecondReload'], 'Penanda harus mengikuti videoSrc saat transisi video.');
+        $this->assertTrue($r['failedShown'], 'Video baru dengan token usang tidak boleh memicu reload beruntun.');
+    }
+    public function testPlaybackClearsBothMarkerStores(): void
+    {
+        $r = $this->runHarness('clear-marker-call');
+        $this->assertTrue($r['storageCleared'], 'Penanda sessionStorage harus dihapus saat playback normal.');
+        $this->assertTrue($r['nameCleared'], 'Penanda window.name juga harus dihapus tanpa merusak nilai lain.');
+    }
     public function testBfcacheRestoreTearsDownStalePlayer(): void
     {
         $r = $this->runHarness('bfcache-teardown');

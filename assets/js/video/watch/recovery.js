@@ -121,6 +121,69 @@ function cancelMediaProbe() {
   }
   isCheckingStatus = !1;
 }
+function authReloadKey() {
+  return "meel_stream_auth_reload:" + (typeof videoSrc !== "undefined" ? videoSrc : "");
+}
+function authMarkerGet() {
+  const key = authReloadKey();
+  try {
+    const v = sessionStorage.getItem(key);
+    if (v !== null) return v;
+  } catch (err) {}
+  try {
+    if (typeof window.name === "string" && window.name.includes(key)) return "1";
+  } catch (err) {}
+  return null;
+}
+function authMarkerSet() {
+  const key = authReloadKey();
+  try {
+    sessionStorage.setItem(key, "1");
+  } catch (err) {}
+  try {
+    if (typeof window.name === "string" && !window.name.includes(key)) {
+      window.name = (window.name ? window.name + "|" : "") + key;
+    }
+  } catch (err) {}
+}
+function authMarkerClear() {
+  const key = authReloadKey();
+  try {
+    sessionStorage.removeItem(key);
+  } catch (err) {}
+  try {
+    if (typeof window.name === "string" && window.name.includes(key)) {
+      window.name = window.name
+        .split("|")
+        .filter(function (part) { return part && part !== key; })
+        .join("|");
+    }
+  } catch (err) {}
+}
+window.__meelClearAuthReloadMarker = authMarkerClear;
+function handleAuthorizationExpired() {
+  if (probeRetryTimer) {
+    clearTimeout(probeRetryTimer);
+    probeRetryTimer = null;
+  }
+  if (probeTimeout) {
+    clearTimeout(probeTimeout);
+    probeTimeout = null;
+  }
+  probeController = null;
+  isCheckingStatus = false;
+  window._videoReconnectOverlay && window._videoReconnectOverlay.hide();
+
+  if (authMarkerGet() === "1") {
+    console.warn("Otorisasi stream masih ditolak setelah reload; recovery dihentikan.");
+    window._videoReconnectOverlay && window._videoReconnectOverlay.showFailed();
+    return;
+  }
+  authMarkerSet();
+  console.warn("Otorisasi stream kedaluwarsa; memuat ulang halaman untuk memperbarui token.");
+  destroyPlayer();
+  window.location.reload();
+}
 function scheduleProbeRetry(status) {
   const serverError = status >= 500;
   const step = serverError ? 1e4 : 3e3;
@@ -136,6 +199,7 @@ function scheduleProbeRetry(status) {
   }, Math.min(step * (recoveryRetryCount + 1), cap));
 }
 function probeOnline() {
+  authMarkerClear();
   console.log("Media terdeteksi online! Memulai pemulihan...");
   recoveryRetryCount = 0;
   lastSuccessfulRecovery = Date.now();
@@ -210,6 +274,10 @@ function checkMediaAndRecover() {
         clearTimeout(timeout);
         probeTimeout = null;
         probeController = null;
+        if (response.status === 401 || response.status === 403) {
+          handleAuthorizationExpired();
+          return;
+        }
         console.log(
           "Media belum siap (status " + response.status + ", tipe " + contentType + "). Menguji ulang...",
         );
