@@ -127,6 +127,7 @@ if (!defined('MEEL_API_CONTEXT')) {
         ActivityLogger::onRequest($conn);
         require_once __DIR__ . '/../modules/core/GarbageCollector.php';
         GarbageCollector::cleanChessRooms($conn);
+        GarbageCollector::cleanStaleQueues($conn);
     }
 }
 

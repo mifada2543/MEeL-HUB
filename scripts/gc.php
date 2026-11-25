@@ -83,6 +83,11 @@ if (!$yes) {
 GarbageCollector::run();
 echo "[MEeL gc] scan storage + rate-limit selesai\n";
 
+$queueCleanup = GarbageCollector::cleanStaleQueues($conn);
+if ($queueCleanup['scanned'] > 0) {
+    echo "[MEeL gc] antrean macet: {$queueCleanup['scanned']} dipindai, {$queueCleanup['failed']} failed, {$queueCleanup['refunded']} refund\n";
+}
+
 require_once __DIR__ . '/../modules/core/TranscoderBase.php';
 $stalePids = TranscoderBase::cleanupStalePidFiles();
 if ($stalePids > 0) {

@@ -60,7 +60,11 @@ if (isset($_POST['start_transcode'])) {
             }
 
             if (empty($alert_message)) {
-                $result = $transcoder->transcodeVideo($video_id, $format);
+                try {
+                    $result = $transcoder->transcodeVideo($video_id, $format);
+                } finally {
+                    $transcoder->finalizeStaleTranscodeQueue();
+                }
 
                 if ($result['status'] === 'success') {
                     $download_link = $result['download_link'];

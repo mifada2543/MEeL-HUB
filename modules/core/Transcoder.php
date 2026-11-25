@@ -65,7 +65,13 @@ class Transcoder extends TranscoderBase
 
     public function getLastQueueId(): int
     {
-        return $this->downloadService?->getLastQueueId() ?? 0;
+        $transcodeQueueId = $this->transcodeService?->getLastQueueId() ?? 0;
+        return $transcodeQueueId > 0 ? $transcodeQueueId : ($this->downloadService?->getLastQueueId() ?? 0);
+    }
+
+    public function finalizeStaleTranscodeQueue(): void
+    {
+        $this->transcodeService?->finalizeStaleQueue();
     }
 
     public function encodeMusic(

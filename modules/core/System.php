@@ -5,6 +5,7 @@ require_once __DIR__ . '/TranscoderBase.php';
 class System
 {
     public const MAX_CONCURRENT_QUEUES = 2;
+    public const ACTIVE_QUEUE_WINDOW_MINUTES = 10;
 
     private mysqli $conn;
     public function __construct(mysqli $db_connection)
@@ -13,11 +14,13 @@ class System
     }
     public function getActiveQueues(): array
     {
+        $window = self::ACTIVE_QUEUE_WINDOW_MINUTES;
         $active_queues = [];
         $res1 = $this->conn->query("SELECT q.id, q.url, q.media_type, q.status, q.created_at, u.username, 'download' as task_type
                                     FROM upload_queue q
                                     JOIN users u ON q.user_id = u.id
                                     WHERE q.status = 'processing'
+                                      AND q.created_at > DATE_SUB(NOW(), INTERVAL $window MINUTE)
                                     ORDER BY q.created_at ASC");
         if ($res1) {
             while ($row = $res1->fetch_assoc()) {
@@ -28,6 +31,7 @@ class System
                                     FROM transcode_queue q
                                     JOIN users u ON q.user_id = u.id
                                     WHERE q.status = 'processing'
+                                      AND q.created_at > DATE_SUB(NOW(), INTERVAL $window MINUTE)
                                     ORDER BY q.created_at ASC");
         if ($res2) {
             while ($row = $res2->fetch_assoc()) {
@@ -347,20 +351,13 @@ class System
     }
     public function cleanStuckQueues(): int
     {
-        $this->conn->begin_transaction();
-        try {
-            $this->conn->query("DELETE FROM transcode_queue WHERE status = 'processing'");
-            $del_count = $this->conn->affected_rows;
-
-            $this->conn->query("UPDATE upload_queue SET status = 'failed' WHERE status = 'processing'");
-            $upd_count = $this->conn->affected_rows;
-
-            $this->conn->commit();
-            return $del_count + $upd_count;
-        } catch (\Throwable $e) {
-            $this->conn->rollback();
-            return 0;
-        }
+        require_once __DIR__ . '/GarbageCollector.php';
+        $result = GarbageCollector::releaseStaleQueueRows(
+            $this->conn,
+            self::ACTIVE_QUEUE_WINDOW_MINUTES,
+            ['upload_queue', 'transcode_queue']
+        );
+        return $result['failed'];
     }
     public function forceStopQueue(int $id, string $task_type): bool
     {

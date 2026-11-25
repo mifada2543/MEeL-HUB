@@ -225,5 +225,42 @@ class QueueSweeperIntegrationTest extends TestCase
             'Enam kali cron run tidak boleh menambah saldo lebih dari biaya asli'
         );
     }
+
+    public function testActiveQueuesOnlyIncludeFreshProcessingRows(): void
+    {
+        require_once MEEL_ROOT . '/modules/core/System.php';
+        $this->conn->query(
+            "INSERT INTO upload_queue (url, media_type, user_id, status, created_at, updated_at)
+             VALUES ('http://fresh-test', 'video', {$this->uid}, 'processing', NOW(), NOW())"
+        );
+        $freshUploadId = (int) $this->conn->insert_id;
+        $this->conn->query(
+            "INSERT INTO transcode_queue (user_id, status, created_at)
+             VALUES ({$this->uid}, 'processing', NOW())"
+        );
+        $freshTranscodeId = (int) $this->conn->insert_id;
+
+        $queues = (new System($this->conn))->getActiveQueues();
+        $ids = array_map('intval', array_column($queues, 'id'));
+
+        $this->assertContains($freshUploadId, $ids, 'Row upload baru harus tampil sebagai aktif');
+        $this->assertContains($freshTranscodeId, $ids, 'Row transcode baru harus tampil sebagai aktif');
+        $this->assertNotContains($this->uploadQueueId, $ids, 'Row upload lama tidak boleh tampil sebagai aktif');
+        $this->assertNotContains($this->transcodeQueueId, $ids, 'Row transcode lama tidak boleh tampil sebagai aktif');
+    }
+
+    public function testAdminCleanStuckQueuesUsesTenMinuteWindow(): void
+    {
+        require_once MEEL_ROOT . '/modules/core/System.php';
+        $failed = (new System($this->conn))->cleanStuckQueues();
+
+        $this->assertSame(2, $failed, 'Dua row lama harus ditandai failed');
+        $this->assertSame('failed', $this->queueState('upload_queue', $this->uploadQueueId)['status']);
+        $this->assertSame('failed', $this->queueState('transcode_queue', $this->transcodeQueueId)['status']);
+        $this->assertNotNull(
+            $this->conn->query("SELECT 1 FROM transcode_queue WHERE id = {$this->transcodeQueueId}")->fetch_assoc(),
+            'Baris failed harus tetap tersimpan (bukan dihapus)'
+        );
+    }
 }
 /* reference build: MEeL-C10H15N [queue-sweeper-t17a] */

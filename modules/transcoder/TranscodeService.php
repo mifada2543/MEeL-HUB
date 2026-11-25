@@ -12,6 +12,38 @@ class TranscodeService extends TranscoderBase
     private const CACHE_UNPROBED_BYTES = 50000;
     private const MARKER_STALE_SECONDS = 600;
 
+    private int $lastQueueId = 0;
+    private ?int $activeQueueId = null;
+    private string $activeMarkerFile = '';
+
+    public function getLastQueueId(): int
+    {
+        return $this->lastQueueId;
+    }
+
+    /** Dipanggil shutdown handler & catch: tutup queue yang masih menggantung. */
+    public function finalizeStaleQueue(): void
+    {
+        if ($this->activeQueueId === null) {
+            return;
+        }
+        $id = $this->activeQueueId;
+        $this->activeQueueId = null;
+
+        $stmt = $this->conn->prepare(
+            "UPDATE transcode_queue SET status = 'failed' WHERE id = ? AND status = 'processing'"
+        );
+        if ($stmt) {
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $stmt->close();
+        }
+        if ($this->activeMarkerFile !== '') {
+            $this->removeFile($this->activeMarkerFile);
+            $this->activeMarkerFile = '';
+        }
+    }
+
     public function transcodeVideo(int $video_id, string $format = 'mp3'): array
     {
         $output_dir = $this->getShmTranscodePath() . '/';
@@ -46,42 +78,54 @@ class TranscodeService extends TranscoderBase
             return $slot;
         }
 
-        $concat_list_path = $this->writeConcatList($source['ts_files'], $output_dir, $video_id);
-        $audio = $this->resolveAudioFormat($format, $source['hls_base'], $source['video']);
-        $tc_cmd = $this->buildFfmpegArgv($audio, $concat_list_path, $output_path, $format);
-        $tc_env = $this->transcodeEnv();
+        if ($queue_id > 0) {
+            $this->lastQueueId = $queue_id;
+            $this->activeQueueId = $queue_id;
+            $this->activeMarkerFile = $marker_file;
+            register_shutdown_function([$this, 'finalizeStaleQueue']);
+        }
 
-        $exit = $this->runFfmpeg($tc_cmd, $tc_env, $source['duration'], $format, $output_filename, $queue_id);
-        if ($exit === null) {
+        try {
+            $concat_list_path = $this->writeConcatList($source['ts_files'], $output_dir, $video_id);
+            $audio = $this->resolveAudioFormat($format, $source['hls_base'], $source['video']);
+            $tc_cmd = $this->buildFfmpegArgv($audio, $concat_list_path, $output_path, $format);
+            $tc_env = $this->transcodeEnv();
+
+            $exit = $this->runFfmpeg($tc_cmd, $tc_env, $source['duration'], $format, $output_filename, $queue_id);
+            if ($exit === null) {
+                $this->removeFile($concat_list_path);
+                return $this->failJob(
+                    $queue_id,
+                    'FFmpeg gagal dijalankan.',
+                    ['status' => 'error', 'msg' => 'FFmpeg gagal dijalankan.'],
+                    [$concat_list_path, $marker_file]
+                );
+            }
+            if ($exit !== 0) {
+                $this->removeFile($concat_list_path);
+                return $this->failJob(
+                    $queue_id,
+                    'FFmpeg gagal memproses audio (exit code: ' . $exit . ').',
+                    ['status' => 'error', 'msg' => 'FFmpeg gagal memproses audio (exit code: ' . $exit . ').'],
+                    [$output_path, $concat_list_path, $marker_file]
+                );
+            }
+
             $this->removeFile($concat_list_path);
-            return $this->failJob(
-                $queue_id,
-                'FFmpeg gagal dijalankan.',
-                ['status' => 'error', 'msg' => 'FFmpeg gagal dijalankan.'],
-                [$concat_list_path, $marker_file]
-            );
-        }
-        if ($exit !== 0) {
-            $this->removeFile($concat_list_path);
-            return $this->failJob(
-                $queue_id,
-                'FFmpeg gagal memproses audio (exit code: ' . $exit . ').',
-                ['status' => 'error', 'msg' => 'FFmpeg gagal memproses audio (exit code: ' . $exit . ').'],
-                [$output_path, $concat_list_path, $marker_file]
-            );
-        }
+            $this->removeFile($marker_file);
 
-        $this->removeFile($concat_list_path);
-        $this->removeFile($marker_file);
+            if (!file_exists($output_path) || filesize($output_path) === 0) {
+                $this->setQueueStatus($queue_id, 'failed');
+                $this->emit('error', ['message' => 'FFmpeg gagal menghasilkan file output.']);
+                return ['status' => 'error', 'msg' => 'FFmpeg gagal menghasilkan file.'];
+            }
 
-        if (!file_exists($output_path) || filesize($output_path) === 0) {
-            $this->setQueueStatus($queue_id, 'failed');
-            $this->emit('error', ['message' => 'FFmpeg gagal menghasilkan file output.']);
-            return ['status' => 'error', 'msg' => 'FFmpeg gagal menghasilkan file.'];
+            $this->setQueueStatus($queue_id, 'completed');
+            return $this->completeTranscode($output_filename, $source['video']);
+        } catch (\Throwable $e) {
+            $this->finalizeStaleQueue();
+            throw $e;
         }
-
-        $this->setQueueStatus($queue_id, 'completed');
-        return $this->completeTranscode($output_filename, $source['video']);
     }
 
     private function prepareOutputDirectory(string $output_dir): ?array
