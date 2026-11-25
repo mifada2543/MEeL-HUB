@@ -36,7 +36,7 @@ session_write_close();
         $__og_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__og_image;
     }
     $_META_TITLE = $v['title'] . ' — MEeL Music';
-    $_META_DESC = 'Dengarkan ' . $v['title'] . ' oleh ' . ($v['artist'] ?? 'Tidak diketahui') . ' di MEeL Music.';
+    $_META_DESC = 'Dengarkan ' . $v['title'] . ' oleh ' . meel_music_artist($v['artist'] ?? null) . ' di MEeL Music.';
     $_META_IMAGE = $__og_image;
     $_META_IMAGE_W = '512';
     $_META_IMAGE_H = '512';
@@ -125,9 +125,9 @@ session_write_close();
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="text-center sm:text-left flex-1 min-w-0">
                                 <div class="track-title truncate" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
-                                <a href="beranda?artist=<?= urlencode($v['artist']) ?>"
+                                <a href="beranda?artist=<?= urlencode(meel_music_artist($v['artist'] ?? null)) ?>"
                                     class="text-orange-400 font-bold text-sm uppercase tracking-widest hover:underline block mt-2 truncate">
-                                    <?= htmlspecialchars($v['artist']) ?>
+                                    <?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?>
                                 </a>
                             </div>
                         </div>
@@ -367,7 +367,7 @@ session_write_close();
                                     <div class="text-[11px] font-bold truncate uppercase <?= $is_pl ? 'text-orange-400' : 'text-gray-400' ?>">
                                         <?= htmlspecialchars($q['title']) ?>
                                     </div>
-                                    <div class="text-[9px] text-gray-400 uppercase tracking-wider"><?= htmlspecialchars($q['artist']) ?></div>
+                                    <div class="text-[9px] text-gray-400 uppercase tracking-wider"><?= htmlspecialchars(meel_music_artist($q['artist'] ?? null)) ?></div>
                                 </div>
                                 <?php if ($is_pl): ?><i data-lucide="volume-2" class="w-3.5 h-3.5 text-orange-400 flex-shrink-0"></i><?php endif; ?>
                             </a>
@@ -473,7 +473,7 @@ session_write_close();
                     </div>
                     <div class="mp-meta">
                         <div class="mp-title" id="mini-title"><?= htmlspecialchars($v['title']) ?></div>
-                        <div class="mp-artist" id="mini-artist"><?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?></div>
+                        <div class="mp-artist" id="mini-artist"><?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?></div>
                     </div>
                 </div>
                 <div class="mp-controls">
@@ -515,7 +515,7 @@ session_write_close();
             </div>
             <div class="meel-share-uploader">
                 <div class="meel-share-avatar" id="meel-share-avatar" aria-hidden="true"><img id="meel-share-avatar-img" src="<?= htmlspecialchars((!empty($v['uploader_pfp']) ? meel_profile_image_url($v['uploader_pfp'], '../profile/upload/') : '../profile/upload/default_avatar.png'), ENT_QUOTES, 'UTF-8') ?>" alt="" onerror="this.onerror=null;this.src='../profile/upload/default_avatar.png'"></div>
-                <div class="meel-share-uploader-name"><?= htmlspecialchars($v['artist'] ?? '', ENT_QUOTES, 'UTF-8') ?></div>
+                <div class="meel-share-uploader-name"><?= htmlspecialchars(meel_music_artist($v['artist'] ?? null), ENT_QUOTES, 'UTF-8') ?></div>
             </div>
             <div class="meel-share-row">
                 <input type="text" id="meel-share-url" readonly value="" aria-label="Tautan lagu">
@@ -543,7 +543,7 @@ session_write_close();
             fileSizeBytes: <?= (int)$file_size_bytes ?>,
             nextSongUrl: <?= json_encode($next_song_url) ?>,
             title: <?= json_encode($v['title']) ?>,
-            artist: <?= json_encode($v['artist'] ?? '') ?>,
+            artist: <?= json_encode(meel_music_artist($v['artist'] ?? null)) ?>,
             uploader: <?= json_encode($v['uploader'] ?? '') ?>,
             uploaderPfp: <?= json_encode((!empty($v['uploader_pfp']) ? meel_profile_image_url($v['uploader_pfp'], '../profile/upload/') : '')) ?>,
             startAt: <?= $startAt ?>,

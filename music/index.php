@@ -375,7 +375,7 @@ if (isset($_GET['content_only'])) {
                 </div>
                 <div class="mp-meta">
                     <div class="mp-title" id="mini-title-index">Tidak ada musik</div>
-                    <div class="mp-artist" id="mini-artist-index">Tidak diketahui</div>
+                    <div class="mp-artist" id="mini-artist-index"><?= htmlspecialchars(MEEL_DEFAULT_ARTIST) ?></div>
                 </div>
             </div>
 

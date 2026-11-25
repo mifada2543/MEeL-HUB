@@ -60,7 +60,7 @@ if (isset($_POST['update'])) {
         $error_message = "CSRF Token tidak valid.";
     } else {
         $title = trim($_POST['title'] ?? '');
-        $artist = trim($_POST['artist'] ?? 'Artis Tidak Diketahui');
+        $artist = meel_music_artist($_POST['artist'] ?? null);
         $album = trim($_POST['album'] ?? 'Single');
         $description = trim($_POST['description'] ?? '');
         $old_thumb_name = $music['thumbnail'];
@@ -154,7 +154,7 @@ $thumb_src = !empty($music['thumbnail'])
                         </div>
                         <div>
                             <div class="meta-label">Artis</div>
-                            <div class="meta-value" id="sidebar-artist"><?= htmlspecialchars($music['artist'] ?? '—') ?></div>
+                            <div class="meta-value" id="sidebar-artist"><?= htmlspecialchars(meel_music_artist($music['artist'] ?? null)) ?></div>
                         </div>
                     </div>
                     <div class="meta-row">
@@ -230,8 +230,8 @@ $thumb_src = !empty($music['thumbnail'])
                             <label class="field-label" for="f-artist">Artis</label>
                             <input type="text" id="f-artist" name="artist" placeholder="Artis..."
                                 required class="field-input"
-                                value="<?= htmlspecialchars($music['artist'] ?? '') ?>"
-                                oninput="document.getElementById('sidebar-artist').textContent = this.value || '—'">
+                                value="<?= htmlspecialchars(meel_music_artist($music['artist'] ?? null)) ?>"
+                                oninput="document.getElementById('sidebar-artist').textContent = this.value.trim() || '<?= htmlspecialchars(MEEL_DEFAULT_ARTIST, ENT_QUOTES) ?>'">
                         </div>
                         <div class="field-group">
                             <label class="field-label" for="f-album">Album</label>

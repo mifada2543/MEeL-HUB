@@ -216,7 +216,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                                     <?= htmlspecialchars($m['title']) ?>
                                 </a>
                                 <div class="card-meta">
-                                    <span><?= htmlspecialchars($m['artist'] ?? 'Tidak diketahui') ?></span>
+                                    <span><?= htmlspecialchars(meel_music_artist($m['artist'] ?? null)) ?></span>
                                     <span>•</span>
                                     <span><?= number_format($m['views']) ?> tayangan</span>
                                     <span class="flex items-center gap-1 text-green-500/80">

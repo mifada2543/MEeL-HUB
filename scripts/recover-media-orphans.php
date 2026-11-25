@@ -266,7 +266,7 @@ foreach (meel_recover_scan($musicDir) as $p) {
         'judul_awal'   => $slugTitle,
         'judul'        => $slugTitle,
         'deskripsi'    => null,
-        'artist'       => null,
+        'artist'       => MEEL_DEFAULT_ARTIST,
         'album'        => null,
         'thumbnail'    => $thumb,
         'durasi'       => $dur,
@@ -347,7 +347,7 @@ if ($opt['lookup']) {
             } else {
                 $c['judul']        = $dipakai['title'];
                 $c['deskripsi']    = $dipakai['description'] ?: null;
-                $c['artist']       = $dipakai['uploader'] ?: null;
+                $c['artist']       = meel_music_artist($dipakai['uploader'] ?? null);
                 $c['yt_id']        = $dipakai['id'];
                 $c['yt_durasi']    = (int) $dipakai['duration'];
                 $c['sumber']       = 'youtube';
@@ -423,7 +423,7 @@ if ($opt['dari-laporan'] !== '') {
         }
         $c = array_combine($head, $r);
         $c['deskripsi'] = ($c['deskripsi'] ?? '') !== '' ? $c['deskripsi'] : null;
-        $c['artist']    = ($c['artist'] ?? '') !== '' ? $c['artist'] : null;
+        $c['artist']    = meel_music_artist($c['artist'] ?? null);
         $c['album']     = ($c['album'] ?? '') !== '' ? $c['album'] : null;
         $c['durasi']    = (int) $c['durasi'];
         $rows[] = $c;

@@ -123,7 +123,7 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
                             music-pl-item"
                     data-id="<?= $s['id'] ?>"
                     data-title="<?= htmlspecialchars($s['title']) ?>"
-                    data-artist="<?= htmlspecialchars($s['artist'] ?? 'Tidak diketahui') ?>"
+                    data-artist="<?= htmlspecialchars(meel_music_artist($s['artist'] ?? null)) ?>"
                     data-thumbnail="<?= htmlspecialchars($s['thumbnail'] ?? '') ?>"
                     data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($s['thumbnail'])) ?>"
                     data-filename="<?= htmlspecialchars($s['filename']) ?>"
@@ -161,7 +161,7 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
                                 <?= htmlspecialchars($s['title']) ?>
                             </div>
                             <div class="text-[10px] text-gray-600 font-bold uppercase tracking-wider truncate mt-0.5">
-                                <?= htmlspecialchars($s['artist'] ?? 'Tidak diketahui') ?>
+                                <?= htmlspecialchars(meel_music_artist($s['artist'] ?? null)) ?>
                             </div>
                         </div>
                     </a>
@@ -465,7 +465,7 @@ if (isset($_GET['content_only'])) {
                 </div>
                 <div class="mp-meta">
                     <div class="mp-title" id="mini-title-index">Tidak ada musik</div>
-                    <div class="mp-artist" id="mini-artist-index">Tidak diketahui</div>
+                    <div class="mp-artist" id="mini-artist-index"><?= htmlspecialchars(MEEL_DEFAULT_ARTIST) ?></div>
                 </div>
             </div>
             <div class="mp-controls">

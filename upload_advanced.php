@@ -244,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                         ? ($_SESSION['meel_pending_music'][$meta_key] ?? null)
                         : null);
                     $enc_title = (string)($pending['title'] ?? 'Unknown');
-                    $enc_artist = (string)($pending['artist'] ?? 'Unknown Artist');
+                    $enc_artist = meel_music_artist($pending['artist'] ?? null);
                     $enc_album = (string)($pending['album'] ?? 'Single');
                     $enc_duration = (int)($pending['duration'] ?? 0);
                     $enc_desc = (string)($pending['description'] ?? 'Upload by MEeL Engine');

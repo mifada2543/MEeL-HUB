@@ -281,7 +281,7 @@ class Uploader
             return $err;
         }
         $title = trim($post['title'] ?? '');
-        $artist = trim($post['artist'] ?? 'Artis Tidak Diketahui');
+        $artist = meel_music_artist($post['artist'] ?? null);
         $album = trim($post['album'] ?? 'Single');
         $description = trim($post['description'] ?? '');
         $max_size = ($this->user_role === 'admin') ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
