@@ -125,6 +125,8 @@ if (!defined('MEEL_API_CONTEXT')) {
     if (PHP_SAPI !== 'cli' && isset($conn) && $conn instanceof \mysqli) {
         require_once __DIR__ . '/../modules/core/activity_logger.php';
         ActivityLogger::onRequest($conn);
+        require_once __DIR__ . '/../modules/core/GarbageCollector.php';
+        GarbageCollector::cleanChessRooms($conn);
     }
 }
 

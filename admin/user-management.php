@@ -62,8 +62,16 @@ $msg = $_GET['msg'] ?? null;
         </div>
 
         <?php if ($msg): ?>
+            <?php
+            $msg_text = str_replace('_', ' ', $msg);
+            if ($msg === 'Guests_Cleared') {
+                $msg_text = (isset($_GET['n']) && (int)$_GET['n'] > 0)
+                    ? (int)$_GET['n'] . ' tamu tidak aktif dihapus'
+                    : 'Tidak ada tamu tidak aktif';
+            }
+            ?>
             <div class="mb-6 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-bold uppercase tracking-widest">
-                <?= htmlspecialchars(str_replace('_', ' ', $msg)) ?>
+                <?= htmlspecialchars($msg_text) ?>
             </div>
         <?php endif; ?>
 
@@ -192,7 +200,7 @@ $msg = $_GET['msg'] ?? null;
                     </thead>
                     <tbody class="divide-y divide-gray-800" id="monitor-tbody">
                         <?php while ($row = $result_monitor->fetch_assoc()):
-                            $is_online = (time() - strtotime($row['last_activity'])) < 300;
+                            $is_online = (time() - strtotime($row['last_activity'])) < MEEL_GUEST_OFFLINE_SECONDS;
                             $is_cloud = strpos($row['access_via'] ?? '', 'trycloudflare.com') !== false;
                             $is_mobile = strpos($row['user_agent'] ?? '', 'Smartphone') !== false || strpos($row['user_agent'] ?? '', 'Android') !== false;
                         ?>
@@ -263,7 +271,7 @@ $msg = $_GET['msg'] ?? null;
                                         <span class="text-xs text-gray-400 font-mono" data-activity-ts="<?= strtotime($row['last_activity']) ?>"><?= date('H:i:s', strtotime($row['last_activity'])) ?></span>
 
                                         <?php
-                                        $is_online = (time() - strtotime($row['last_activity'])) < 300;
+                                        $is_online = (time() - strtotime($row['last_activity'])) < MEEL_GUEST_OFFLINE_SECONDS;
 
                                         if ($is_online && $row['username'] !== $_SESSION['username'] && $row['role'] !== 'guest'):
                                         ?>

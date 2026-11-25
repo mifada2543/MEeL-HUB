@@ -1,12 +1,12 @@
 <?php
+require_once __DIR__ . '/../auth/helpers/user.php';
+
 class GarbageCollector
 {
     private const STALE_SECONDS = 1200;
-    private const GUEST_STALE_HOURS = 2;
     private const GUEST_CLEANUP_INTERVAL = 3600;
-    private const ROOM_LOBBY_STALE_HOURS = 24;
-    private const ROOM_GAME_STALE_HOURS = 168;
-    private const CHESS_CLEANUP_INTERVAL = 3600;
+    private const ROOM_IDLE_MINUTES = 10;
+    private const CHESS_CLEANUP_INTERVAL = 60;
     public const QUEUE_STUCK_MINUTES = 360;
     public const STALE_QUEUE_SWEEP_INTERVAL = 60;
     private const CACHE_TTL_MAP = [
@@ -286,8 +286,8 @@ class GarbageCollector
     }
     private static function resetGuestsAutoIncrement(\mysqli $conn): void
     {
-        if (!function_exists('purge_guest_users')) {
-            error_log('[MEeL] GarbageCollector: purge_guest_users() tidak termuat, reset AUTO_INCREMENT dilewati.');
+        if (!function_exists('purge_inactive_guests')) {
+            error_log('[MEeL] GarbageCollector: purge_inactive_guests() tidak termuat, reset AUTO_INCREMENT dilewati.');
             return;
         }
         self::cleanGuests($conn);
@@ -298,24 +298,7 @@ class GarbageCollector
         if (self::isWithinThrottle($throttleFile, self::GUEST_CLEANUP_INTERVAL)) {
             return 0;
         }
-        $totalCleaned = 0;
-        $stmt = $conn->prepare(
-            "UPDATE users SET is_active = 0 WHERE role = 'guest' AND is_active = 1 AND last_activity < DATE_SUB(NOW(), INTERVAL ? HOUR)"
-        );
-        if ($stmt) {
-            $hours = self::GUEST_STALE_HOURS;
-            $stmt->bind_param("i", $hours);
-            $stmt->execute();
-            $marked = $stmt->affected_rows;
-            $stmt->close();
-            if ($marked > 0) {
-                $totalCleaned += $marked;
-            }
-        }
-        $deleted = purge_guest_users($conn) ?? 0;
-        if ($deleted > 0) {
-            $totalCleaned += $deleted;
-        }
+        $totalCleaned = purge_inactive_guests($conn, MEEL_GUEST_OFFLINE_SECONDS) ?? 0;
         self::writeThrottleFile($throttleFile);
         return $totalCleaned;
     }
@@ -333,69 +316,17 @@ class GarbageCollector
     }
     public static function cleanChessRooms(\mysqli $conn): int
     {
-        require_once __DIR__ . '/Modules.php';
-        if (!Modules::enabled('arcade')) {
+        require_once __DIR__ . '/ChessRoomPurge.php';
+        if (!function_exists('purge_inactive_chess_rooms')) {
             return 0;
         }
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_chess_last_run.txt';
         if (self::isWithinThrottle($throttleFile, self::CHESS_CLEANUP_INTERVAL)) {
             return 0;
         }
-        $totalCleaned = 0;
-        $lobbyHours = self::ROOM_LOBBY_STALE_HOURS;
-        $stmt = $conn->prepare(
-            "DELETE FROM moves WHERE room_code IN (
-                SELECT room_code FROM rooms
-                WHERE black_joined = 0 AND created_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
-            )"
-        );
-        if ($stmt) {
-            $stmt->bind_param("i", $lobbyHours);
-            $stmt->execute();
-            $stmt->close();
-        }
-        $stmt = $conn->prepare(
-            "DELETE FROM rooms
-             WHERE black_joined = 0 AND created_at < DATE_SUB(NOW(), INTERVAL ? HOUR)"
-        );
-        if ($stmt) {
-            $stmt->bind_param("i", $lobbyHours);
-            $stmt->execute();
-            $totalCleaned += $stmt->affected_rows;
-            $stmt->close();
-        }
-        $gameHours = self::ROOM_GAME_STALE_HOURS;
-        $staleRooms = "SELECT room_code FROM (
-                SELECT r.room_code
-                FROM rooms r
-                LEFT JOIN (
-                    SELECT room_code, MAX(created_at) AS last_move_at
-                    FROM moves GROUP BY room_code
-                ) m ON m.room_code = r.room_code
-                WHERE r.black_joined = 1
-                  AND NOT EXISTS (
-                      SELECT 1 FROM moves t
-                      WHERE t.room_code = r.room_code
-                        AND JSON_UNQUOTE(JSON_EXTRACT(t.move_data, '$.type'))
-                            IN ('resign','draw_accept','disconnect','game_over')
-                  )
-                  AND COALESCE(m.last_move_at, r.created_at) < DATE_SUB(NOW(), INTERVAL ? HOUR)
-            ) AS stale_rooms";
-        $stmt = $conn->prepare("DELETE FROM moves WHERE room_code IN ($staleRooms)");
-        if ($stmt) {
-            $stmt->bind_param("i", $gameHours);
-            $stmt->execute();
-            $stmt->close();
-        }
-        $stmt = $conn->prepare("DELETE FROM rooms WHERE room_code IN ($staleRooms)");
-        if ($stmt) {
-            $stmt->bind_param("i", $gameHours);
-            $stmt->execute();
-            $totalCleaned += $stmt->affected_rows;
-            $stmt->close();
-        }
+        $result = purge_inactive_chess_rooms($conn, self::ROOM_IDLE_MINUTES);
         self::writeThrottleFile($throttleFile);
-        return $totalCleaned;
+        return $result['rooms'];
     }
     public static function cleanCacheDirectory(): int
     {

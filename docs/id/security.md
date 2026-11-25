@@ -160,13 +160,13 @@ Semua halaman admin menggunakan `require_admin($conn)` sebagai gate otorisasi te
 function require_admin(mysqli $conn): void
 {
     if (!is_admin($conn)) {
-        header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
+        header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
         exit;
     }
 }
 ```
 
-User non-admin di-redirect ke `/err?code=not_found` (HTTP 404) alih-alih menampilkan halaman 403 "Access Denied". Ini adalah pola **security-by-obscurity** — user yang tidak berizan melihat halaman "Not Found" generik, menyembunyikan keberadaan halaman admin-only.
+User non-admin di-redirect ke `/err?code=denied` (HTTP 403 "Access Denied"). Sebelumnya respons 404 dipakai sebagai pola **security-by-obscurity**; kini diganti penolakan eksplisit agar alasannya jelas. Keberadaan halaman admin-only dengan demikian tidak lagi disembunyikan.
 
 Pola redirect yang sama digunakan di:
 - `controllers/admin/admin_actions.php` — guard `MEEL_ADMIN_CONTEXT` + guard `is_admin()`

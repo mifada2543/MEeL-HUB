@@ -13,7 +13,7 @@ if (!function_exists('require_admin')) {
 function require_admin(mysqli $conn): void
 {
     if (!is_admin($conn)) {
-        header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
+        header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
         exit;
     }
 }
