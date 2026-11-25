@@ -115,10 +115,10 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         return 'ZZ' . strtoupper(substr(uniqid('', true), -6));
     }
 
-    public function testLobbyOlderThan24HoursIsDeleted(): void
+    public function testLobbyOlderThanTenMinutesIsDeleted(): void
     {
         $code = $this->newCode();
-        $this->insertRoom($code, false, date('Y-m-d H:i:s', time() - 2 * 86400));
+        $this->insertRoom($code, false, date('Y-m-d H:i:s', time() - 11 * 60));
 
         $cleaned = GarbageCollector::cleanChessRooms($this->conn);
 
@@ -129,7 +129,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
     public function testFreshLobbyIsKept(): void
     {
         $code = $this->newCode();
-        $this->insertRoom($code, false, date('Y-m-d H:i:s', time() - 3600));
+        $this->insertRoom($code, false, date('Y-m-d H:i:s', time() - 5 * 60));
 
         GarbageCollector::cleanChessRooms($this->conn);
 
@@ -155,7 +155,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
     {
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 2 * 86400));
-        $this->insertMove($code, date('Y-m-d H:i:s', time() - 3600));
+        $this->insertMove($code, date('Y-m-d H:i:s', time() - 5 * 60));
 
         GarbageCollector::cleanChessRooms($this->conn);
 
@@ -174,7 +174,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         $this->assertFalse($this->roomExists($code));
     }
 
-    public function testFinishedGameWithResignEventIsKept(): void
+    public function testFinishedGameWithResignEventIsPurgedWhenIdle(): void
     {
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 30 * 86400));
@@ -183,12 +183,12 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
         $cleaned = GarbageCollector::cleanChessRooms($this->conn);
 
-        $this->assertSame(0, $cleaned);
-        $this->assertTrue($this->roomExists($code));
-        $this->assertSame(2, $this->moveCount($code));
+        $this->assertGreaterThanOrEqual(1, $cleaned);
+        $this->assertFalse($this->roomExists($code));
+        $this->assertSame(0, $this->moveCount($code));
     }
 
-    public function testFinishedGameWithGameOverEventIsKept(): void
+    public function testFinishedGameWithGameOverEventIsPurgedWhenIdle(): void
     {
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 30 * 86400));
@@ -197,11 +197,11 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
         $cleaned = GarbageCollector::cleanChessRooms($this->conn);
 
-        $this->assertSame(0, $cleaned);
-        $this->assertTrue($this->roomExists($code));
+        $this->assertGreaterThanOrEqual(1, $cleaned);
+        $this->assertFalse($this->roomExists($code));
     }
 
-    public function testFinishedGameWithDrawAcceptEventIsKept(): void
+    public function testFinishedGameWithDrawAcceptEventIsPurgedWhenIdle(): void
     {
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 30 * 86400));
@@ -209,8 +209,8 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
         $cleaned = GarbageCollector::cleanChessRooms($this->conn);
 
-        $this->assertSame(0, $cleaned);
-        $this->assertTrue($this->roomExists($code));
+        $this->assertGreaterThanOrEqual(1, $cleaned);
+        $this->assertFalse($this->roomExists($code));
     }
 
     public function testStaleLobbyWithMovesCleansBoth(): void
@@ -227,7 +227,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         $this->assertSame(0, $this->moveCount($code));
     }
 
-    public function testFinishedGameWithResignIsKept(): void
+    public function testFinishedGameWithResignIsPurgedWhenIdle(): void
     {
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 30 * 86400));
@@ -236,11 +236,11 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
         GarbageCollector::cleanChessRooms($this->conn);
 
-        $this->assertTrue($this->roomExists($code));
-        $this->assertSame(2, $this->moveCount($code));
+        $this->assertFalse($this->roomExists($code));
+        $this->assertSame(0, $this->moveCount($code));
     }
 
-    public function testFinishedGameWithGameOverIsKept(): void
+    public function testFinishedGameWithGameOverIsPurgedWhenIdle(): void
     {
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 30 * 86400));
@@ -249,11 +249,11 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
         GarbageCollector::cleanChessRooms($this->conn);
 
-        $this->assertTrue($this->roomExists($code));
-        $this->assertSame(2, $this->moveCount($code));
+        $this->assertFalse($this->roomExists($code));
+        $this->assertSame(0, $this->moveCount($code));
     }
 
-    public function testMixedRunKeepsFinishedAndCleansStuckInSameCall(): void
+    public function testMixedRunCleansFinishedAndStuckInSameCall(): void
     {
         $finished = $this->newCode();
         $this->insertRoom($finished, true, date('Y-m-d H:i:s', time() - 30 * 86400));
@@ -266,9 +266,9 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
         $cleaned = GarbageCollector::cleanChessRooms($this->conn);
 
-        $this->assertGreaterThanOrEqual(1, $cleaned);
-        $this->assertTrue($this->roomExists($finished));
-        $this->assertSame(2, $this->moveCount($finished));
+        $this->assertGreaterThanOrEqual(2, $cleaned);
+        $this->assertFalse($this->roomExists($finished));
+        $this->assertSame(0, $this->moveCount($finished));
         $this->assertFalse($this->roomExists($stuck));
         $this->assertSame(0, $this->moveCount($stuck));
     }
@@ -279,11 +279,11 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         $this->insertRoom($stale, false, date('Y-m-d H:i:s', time() - 2 * 86400));
 
         $freshLobby = $this->newCode();
-        $this->insertRoom($freshLobby, false, date('Y-m-d H:i:s', time() - 3600));
+        $this->insertRoom($freshLobby, false, date('Y-m-d H:i:s', time() - 5 * 60));
 
         $activeGame = $this->newCode();
         $this->insertRoom($activeGame, true, date('Y-m-d H:i:s', time() - 2 * 86400));
-        $this->insertMove($activeGame, date('Y-m-d H:i:s', time() - 3600));
+        $this->insertMove($activeGame, date('Y-m-d H:i:s', time() - 5 * 60));
 
         $cleaned = GarbageCollector::cleanChessRooms($this->conn);
 
@@ -292,6 +292,22 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         $this->assertTrue($this->roomExists($freshLobby));
         $this->assertTrue($this->roomExists($activeGame));
         $this->assertSame(1, $this->moveCount($activeGame));
+    }
+
+    public function testGameIdleElevenMinutesIsDeletedAndNineMinutesIsKept(): void
+    {
+        $idle = $this->newCode();
+        $this->insertRoom($idle, true, date('Y-m-d H:i:s', time() - 60 * 60));
+        $this->insertMove($idle, date('Y-m-d H:i:s', time() - 11 * 60));
+
+        $fresh = $this->newCode();
+        $this->insertRoom($fresh, true, date('Y-m-d H:i:s', time() - 60 * 60));
+        $this->insertMove($fresh, date('Y-m-d H:i:s', time() - 9 * 60));
+
+        GarbageCollector::cleanChessRooms($this->conn);
+
+        $this->assertFalse($this->roomExists($idle));
+        $this->assertTrue($this->roomExists($fresh));
     }
 
     public function testThrottleSkipsCleanupWhenRecentlyRun(): void

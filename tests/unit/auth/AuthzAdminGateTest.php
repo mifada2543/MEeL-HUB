@@ -173,9 +173,9 @@ class AuthzAdminGateTest extends TestCase
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/authz.php');
 
         $this->assertStringContainsString(
-            "header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302)",
+            "header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302)",
             $src,
-            'require_admin() harus redirect ke /err?code=not_found (404-style), bukan membocorkan keberadaan /admin'
+            'require_admin() harus redirect ke /err?code=denied (403 Access Denied), sesuai permintaan'
         );
         $this->assertStringNotContainsString(
             "header('Location: ' . meel_base_url_path() . '/admin",

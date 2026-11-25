@@ -1,4 +1,7 @@
 <?php
+if (!defined('MEEL_GUEST_OFFLINE_SECONDS')) {
+    define('MEEL_GUEST_OFFLINE_SECONDS', 300);
+}
 if (!function_exists('get_user_usage')) {
     function get_user_usage(string $username): int|float
     {
@@ -60,13 +63,18 @@ if (!function_exists('get_user_active')) {
         return $cache[$user_id] = (int)$row['is_active'] === 1;
     }
 }
-if (!function_exists('purge_guest_users')) {
-    function purge_guest_users(mysqli $conn): ?int
+if (!function_exists('purge_inactive_guests')) {
+    function purge_inactive_guests(mysqli $conn, ?int $offlineSeconds = null): ?int
     {
-        $stmt = $conn->prepare("DELETE FROM users WHERE role = 'guest' AND is_active = 0");
+        $seconds = $offlineSeconds ?? (defined('MEEL_GUEST_OFFLINE_SECONDS') ? MEEL_GUEST_OFFLINE_SECONDS : 300);
+        $stmt = $conn->prepare(
+            "DELETE FROM users WHERE role = 'guest'
+             AND (is_active = 0 OR last_activity < DATE_SUB(NOW(), INTERVAL ? SECOND))"
+        );
         if (!$stmt) {
             return null;
         }
+        $stmt->bind_param('i', $seconds);
         $ok = $stmt->execute();
         $deleted = $stmt->affected_rows;
         $stmt->close();
@@ -74,6 +82,13 @@ if (!function_exists('purge_guest_users')) {
             return null;
         }
         return $deleted;
+    }
+}
+
+if (!function_exists('purge_guest_users')) {
+    function purge_guest_users(mysqli $conn): ?int
+    {
+        return purge_inactive_guests($conn);
     }
 }
 /* reference build: MEeL-C6H9N3O3 [51ee4fcba4b9d24a] */

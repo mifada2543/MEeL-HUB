@@ -60,37 +60,8 @@ if (isset($_GET['auto_cleanup'])) {
 
 function purgeInactiveRooms(mysqli $conn): array
 {
-    $sql = "
-        SELECT r.room_code
-        FROM rooms r
-        LEFT JOIN (
-            SELECT room_code, MAX(created_at) AS last_move
-            FROM moves
-            GROUP BY room_code
-        ) m ON r.room_code = m.room_code
-        WHERE
-            -- Room belum punya lawan & dibuat > 10 menit lalu
-            (r.black_joined = 0 AND r.created_at < NOW() - INTERVAL 10 MINUTE)
-            OR
-            -- Room sudah penuh tapi tidak ada gerakan > 10 menit
-            (r.black_joined = 1 AND (m.last_move IS NULL OR m.last_move < NOW() - INTERVAL 10 MINUTE))
-    ";
-
-    $res = $conn->query($sql);
-    if (!$res || $res->num_rows === 0) return ['rooms' => 0, 'moves' => 0];
-    $codes = [];
-    while ($row = $res->fetch_assoc()) $codes[] = $row['room_code'];
-    $placeholders = implode(',', array_fill(0, count($codes), '?'));
-    $types = str_repeat('s', count($codes));
-    $dm = $conn->prepare("DELETE FROM moves WHERE room_code IN ($placeholders)");
-    $dm->bind_param($types, ...$codes);
-    $dm->execute();
-    $movesDeleted = $dm->affected_rows;
-    $dr = $conn->prepare("DELETE FROM rooms WHERE room_code IN ($placeholders)");
-    $dr->bind_param($types, ...$codes);
-    $dr->execute();
-    $roomsDeleted = $dr->affected_rows;
-    return ['rooms' => $roomsDeleted, 'moves' => $movesDeleted];
+    require_once __DIR__ . '/../modules/core/ChessRoomPurge.php';
+    return purge_inactive_chess_rooms($conn, 10);
 }
 
 function logCleanup(mysqli $conn, array $result): void

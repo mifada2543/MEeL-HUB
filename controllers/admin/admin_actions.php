@@ -1,16 +1,18 @@
 <?php
 if (!defined('MEEL_ADMIN_CONTEXT')) {
-    header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
+    header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
     exit;
 }
 if (!is_admin($conn)) {
-    header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
+    header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
     exit;
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token($_POST['csrf_token'] ?? null)) {
     header("Location: .?msg=CSRF_Token_Invalid");
     exit();
 }
+require_once __DIR__ . '/../../modules/auth/helpers/user.php';
+require_once __DIR__ . '/../../modules/core/activity_logger.php';
 if (isset($_POST['ban_ip'])) {
     $ip = $_POST['ip_target'];
     $reason = !empty($_POST['ban_reason']) ? $_POST['ban_reason'] : "Manual Ban by Admin";
@@ -31,9 +33,10 @@ if (isset($_POST['unban_ip'])) {
     exit();
 }
 if (isset($_POST['clear_all_guests'])) {
-    $stmt = $conn->prepare("DELETE FROM users WHERE role = 'guest' AND is_active = 0");
-    if ($stmt->execute()) {
-        header("Location: user-management.php?msg=Guests_Cleared#monitor");
+    $deleted = purge_inactive_guests($conn, MEEL_GUEST_OFFLINE_SECONDS);
+    if ($deleted !== null) {
+        log_activity($conn, (int)$_SESSION['user_id'], 'clear_guests', 'user', 0);
+        header("Location: user-management.php?msg=Guests_Cleared&n=" . (int)$deleted . "#monitor");
     } else {
         header("Location: user-management.php?msg=Error_Cleaning");
     }
