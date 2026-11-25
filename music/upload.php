@@ -17,6 +17,7 @@ $user = $_SESSION['username'];
 $user_id = $_SESSION['user_id'];
 $alert_message = "";
 $user_role = get_user_role($conn, $user_id);
+require_upload_role($user_role);
 $is_admin = ($user_role === 'admin');
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 $hour_count = 0;

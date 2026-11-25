@@ -12,10 +12,19 @@ $_nav_is_books = str_contains($_SERVER['PHP_SELF'], '/books/');
 $_nav_is_video = str_contains($_SERVER['PHP_SELF'], '/video/');
 $_nav_is_music = str_contains($_SERVER['PHP_SELF'], '/music/');
 $_nav_is_drive = str_contains($_SERVER['PHP_SELF'], '/drive/');
-$_nav_in_subdir = $_nav_is_books || $_nav_is_video || $_nav_is_music || $_nav_is_drive;
 
-$_nav_pfp_base = $_nav_in_subdir ? '../profile/upload/' : 'profile/upload/';
-$_nav_root = $_nav_in_subdir ? '../' : '';
+$_nav_root = rtrim(meel_base_url_path(), '/') . '/';
+$_nav_pfp_base = $_nav_root . 'profile/upload/';
+
+$_nav_upload_url = $_nav_root . 'upload';
+$_nav_upload_label = '';
+if ($_nav_is_video) {
+    $_nav_upload_url = $_nav_root . 'video/upload';
+    $_nav_upload_label = 'Unggah Video';
+} elseif ($_nav_is_music) {
+    $_nav_upload_url = $_nav_root . 'music/upload';
+    $_nav_upload_label = 'Unggah Musik';
+}
 
 $_nav_alt_links = [];
 if ($_nav_is_video) {
@@ -170,25 +179,28 @@ if ($_nav_is_video) {
                         <span>Drive</span>
                     </a>
                 <?php endif; ?>
+                <?php if (isset($_SESSION['role']) && role_can_upload($_SESSION['role'])): ?>
+                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                        <a href="<?= $_nav_upload_url ?>" title="Unggah media baru ke platform"
+                            class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
+                            <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                            <span><?= $_nav_upload_label !== '' ? $_nav_upload_label : 'Unggah Media' ?></span>
+                        </a>
+                    <?php elseif (!$_nav_is_books): ?>
+                        <a href="<?= $_nav_upload_url ?>"
+                            title="Unggah media baru ke platform"
+                            class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
+                            <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                            <span><?= $_nav_upload_label !== '' ? $_nav_upload_label : 'Unggah' ?></span>
+                        </a>
+                    <?php endif; ?>
+                <?php endif; ?>
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                    <a href="upload" title="Unggah media baru ke platform"
-                        class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
-                        <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
-                        <span>Unggah Media</span>
-                    </a>
                     <a href="<?= $_nav_root ?>admin/beranda"
                         title="Panel admin untuk mengelola pengguna dan konten"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-red-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="settings" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Panel Admin</span>
-                    </a>
-                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member' && !$_nav_is_books): ?>
-
-                    <a href="upload"
-                        title="Unggah media baru ke platform"
-                        class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
-                        <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
-                        <span>Unggah</span>
                     </a>
                 <?php endif; ?>
             </div>
@@ -307,22 +319,26 @@ if ($_nav_is_video) {
                     <span>Drive</span>
                 </a>
             <?php endif; ?>
+            <?php if (isset($_SESSION['role']) && role_can_upload($_SESSION['role'])): ?>
+                <?php if ($_SESSION['role'] === 'admin'): ?>
+                    <a href="<?= $_nav_upload_url ?>"
+                        class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
+                        <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
+                        <span><?= $_nav_upload_label !== '' ? $_nav_upload_label : 'Unggah Media' ?></span>
+                    </a>
+                <?php elseif (!$_nav_is_books): ?>
+                    <a href="<?= $_nav_upload_url ?>"
+                        class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
+                        <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
+                        <span><?= $_nav_upload_label !== '' ? $_nav_upload_label : 'Unggah' ?></span>
+                    </a>
+                <?php endif; ?>
+            <?php endif; ?>
             <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                <a href="upload"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
-                    <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Unggah Media</span>
-                </a>
                 <a href="<?= $_nav_root ?>admin/beranda"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Panel Admin</span>
-                </a>
-            <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member' && !$_nav_is_books): ?>
-                <a href="upload"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
-                    <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Unggah</span>
                 </a>
             <?php endif; ?>
             <div class="mx-6 my-3 h-px bg-white/[.05]"></div>

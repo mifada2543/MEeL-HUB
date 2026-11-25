@@ -289,7 +289,7 @@ if (!$is_guest_profile) {
 
                     <div class="mt-6 p-4 bg-white/5 rounded-2xl border border-white/5">
                         <p class="text-gray-400 text-sm italic leading-relaxed">
-                            <?= $is_guest_profile ? 'Akun Guest' : htmlspecialchars($u['bio'] ?: "Pengguna ini belum menulis bio.", ENT_QUOTES, 'UTF-8') ?>
+                            <?= $is_guest_profile ? 'Akun Guest' : htmlspecialchars($u['bio'] ?: MEEL_DEFAULT_BIO, ENT_QUOTES, 'UTF-8') ?>
                         </p>
                     </div>
                     <?php if (!$is_guest_profile): ?>

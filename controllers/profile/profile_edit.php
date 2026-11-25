@@ -202,7 +202,7 @@ if (isset($_POST['update_profile'])) {
 $stmt_data = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt_data->bind_param("i", $user_id);
 $stmt_data->execute();
-$data = $stmt_data->get_result()->fetch_assoc();
+$data = $stmt_data->get_result()->fetch_assoc() ?: [];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -263,7 +263,7 @@ include __DIR__ . '/../../partials/scripts.php';
 
                 <div class="space-y-2">
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Bio Anda</label>
-                    <textarea name="bio" rows="4" class="w-full bg-[#0b0e14] border border-white/5 rounded-2xl p-4 text-sm focus:outline-none focus:border-blue-600 transition"><?= htmlspecialchars($data['bio']) ?></textarea>
+                    <textarea name="bio" rows="4" class="w-full bg-[#0b0e14] border border-white/5 rounded-2xl p-4 text-sm focus:outline-none focus:border-blue-600 transition"><?= htmlspecialchars($data['bio'] ?? MEEL_DEFAULT_BIO, ENT_QUOTES, 'UTF-8') ?></textarea>
                 </div>
 
                 <button name="update_profile" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-600/20">

@@ -135,10 +135,12 @@ $counts = $library->getCounts();
                     </a>
 
                 <?php endif; ?>
-                <?php if (in_array($_SESSION['role'], ['member', 'admin'])): ?>
+                <?php if (in_array($_SESSION['role'], ['member', 'admin'], true)): ?>
                     <a href="drive/beranda" class="bottom-link" title="Akses drive Anda untuk mengelola file dan dokumen">
                         <i data-lucide="hard-drive" class="w-3 h-3"></i> Drive
                     </a>
+                <?php endif; ?>
+                <?php if (role_can_upload($_SESSION['role'])): ?>
                     <a href="upload" class="bottom-link" title="Unggah media baru ke platform">
                         <i data-lucide="upload-cloud" class="w-3 h-3"></i> Unggah Media
                     </a>
