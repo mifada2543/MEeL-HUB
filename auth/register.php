@@ -59,8 +59,11 @@ if (isset($_POST['register']) && !$is_locked && !$reg_blocked) {
                 $validation_error = true;
             } else {
                 $pass_hashed = password_hash($pass_raw, PASSWORD_DEFAULT);
-                $stmt = $conn->prepare("INSERT INTO users (username, password, role, is_active) VALUES (?, ?, 'user', 2)");
-                $stmt->bind_param("ss", $user, $pass_hashed);
+                $default_bio = defined('MEEL_DEFAULT_BIO')
+                    ? MEEL_DEFAULT_BIO
+                    : 'Pengguna ini terlalu malas untuk membuat bio yang cocok untuk akunnya';
+                $stmt = $conn->prepare("INSERT INTO users (username, password, role, is_active, bio) VALUES (?, ?, 'user', 2, ?)");
+                $stmt->bind_param("sss", $user, $pass_hashed, $default_bio);
                 if ($stmt->execute()) {
                     $new_user_id = $stmt->insert_id;
                     $stmt->close();

@@ -311,6 +311,28 @@ public function testDistinctUsersDoNotShareCachedRole(): void
         $this->assertSame([], $_SESSION, 'setUp() harus membersihkan $_SESSION');
     }
 
+    /** @dataProvider uploadRoleProvider */
+    public function testUploadPermissionMatchesRole(string $role, bool $allowed): void
+    {
+        $this->assertSame(
+            $allowed,
+            role_can_upload($role),
+            sprintf('Role "%s" %s mengunggah', $role, $allowed ? 'boleh' : 'tidak boleh')
+        );
+    }
+
+    public static function uploadRoleProvider(): array
+    {
+        return [
+            'admin'       => ['admin', true],
+            'member'      => ['member', true],
+            'user'        => ['user', true],
+            'guest'       => ['guest', false],
+            'Admin kapital' => ['Admin', false],
+            'kosong'      => ['', false],
+        ];
+    }
+
     private function extractFunction(string $src, string $name): string
     {
         $start = strpos($src, "function {$name}(");

@@ -19,4 +19,21 @@ function require_admin(mysqli $conn): void
 }
 }
 
+if (!function_exists('role_can_upload')) {
+function role_can_upload(string $role): bool
+{
+    return in_array($role, ['admin', 'member', 'user'], true);
+}
+}
+
+if (!function_exists('require_upload_role')) {
+function require_upload_role(string $role): void
+{
+    if (!role_can_upload($role)) {
+        header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
+        exit;
+    }
+}
+}
+
 /* reference build: MEeL-C9H11NO2 [7df6a3f561d511bf] */

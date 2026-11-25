@@ -47,6 +47,7 @@ require_once __DIR__ . '/modules/core/System.php';
 $sys = new System($conn);
 $is_busy = $sys->isServerBusy();
 $user_role = get_user_role($conn, (int)$_SESSION['user_id']);
+require_upload_role($user_role);
 $is_admin = ($user_role === 'admin');
 $get_queue_status = function(int $uid, string $type): ?string {
     global $conn;

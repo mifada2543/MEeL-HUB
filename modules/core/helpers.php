@@ -1,4 +1,7 @@
 <?php
+if (!defined('MEEL_DEFAULT_BIO')) {
+    define('MEEL_DEFAULT_BIO', 'Pengguna ini terlalu malas untuk membuat bio yang cocok untuk akunnya');
+}
 require_once __DIR__ . '/helpers/main.php';
 require_once __DIR__ . '/../auth/loader.php';
 
