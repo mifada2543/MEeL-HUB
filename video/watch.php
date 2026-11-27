@@ -333,7 +333,7 @@ session_write_close();
                 endwhile; ?>
                 <?php if ($rekom_count >= 15): ?>
                     <div class="py-3 text-center rec-sentinel"
-                        hx-get="search?exclude=<?= (int)$id ?>&offset=15"
+                        hx-get="search?exclude=<?= (int)$id ?>&offset=15&sidebar=1"
                         hx-swap="outerHTML"
                         hx-trigger="revealed"
                         hx-indicator="#search-indicator">

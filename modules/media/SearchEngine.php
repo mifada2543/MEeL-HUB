@@ -64,6 +64,12 @@ class SearchEngine
     }
     private function detectSidebar(): bool
     {
+        // Sentinel memakai hx-swap="outerHTML" (target = dirinya sendiri), jadi
+        // HTMX tidak mengirim HX-Target. Flag eksplisit menandai request rekom.
+        if (isset($_GET['sidebar']) && $_GET['sidebar'] === '1'
+            && !empty($_SERVER['HTTP_HX_REQUEST'])) {
+            return true;
+        }
         $target = $_SERVER['HTTP_HX_TARGET'] ?? '';
         return in_array($target, ['recommendation-column', 'music-recommendation-column'], true);
     }

@@ -35,6 +35,32 @@ class SearchEngineTest extends TestCase
         $this->assertSame(5, $params['exclude']);
         $this->assertSame(10, $params['offset']);
     }
+    public function testSidebarFlagDetectedWithoutHxTarget(): void
+    {
+        unset($_GET['search'], $_GET['exclude'], $_GET['offset'], $_SERVER['HTTP_HX_TARGET']);
+        $_GET['sidebar'] = '1';
+        $_SERVER['HTTP_HX_REQUEST'] = 'true';
+        $params = $this->searchEngine->parseParams();
+        $this->assertTrue($params['sidebar'], 'sentinel outerHTML tidak mengirim HX-Target');
+        unset($_GET['sidebar'], $_SERVER['HTTP_HX_REQUEST']);
+    }
+    public function testSidebarFlagIgnoredOutsideHtmx(): void
+    {
+        unset($_GET['search'], $_GET['exclude'], $_GET['offset'], $_SERVER['HTTP_HX_REQUEST'], $_SERVER['HTTP_HX_TARGET']);
+        $_GET['sidebar'] = '1';
+        $params = $this->searchEngine->parseParams();
+        $this->assertFalse($params['sidebar'], 'flag sidebar hanya berlaku untuk request htmx');
+        unset($_GET['sidebar']);
+    }
+    public function testHxTargetStillDetectsSidebar(): void
+    {
+        unset($_GET['search'], $_GET['exclude'], $_GET['offset'], $_GET['sidebar'], $_SERVER['HTTP_HX_REQUEST']);
+        $_SERVER['HTTP_HX_TARGET'] = 'recommendation-column';
+        $params = $this->searchEngine->parseParams();
+        $this->assertTrue($params['sidebar'], 'form pencarian lama tetap memakai HX-Target');
+        unset($_SERVER['HTTP_HX_TARGET']);
+    }
+
     public function testConstants(): void
     {
         $this->assertSame(15, SearchEngine::VIDEO_LIMIT);
