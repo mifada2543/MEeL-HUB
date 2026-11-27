@@ -14,7 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token($_POST['csrf_tok
 require_once __DIR__ . '/../../modules/auth/helpers/user.php';
 require_once __DIR__ . '/../../modules/core/activity_logger.php';
 if (isset($_POST['ban_ip'])) {
-    $ip = $_POST['ip_target'];
+    $ip = trim((string)($_POST['ip_target'] ?? ''));
+    if (!meel_ban_target_allowed($ip)) {
+        header("Location: user-management.php?msg=IP_Target_Invalid");
+        exit();
+    }
     $reason = !empty($_POST['ban_reason']) ? $_POST['ban_reason'] : "Manual Ban by Admin";
 
     $stmt = $conn->prepare("INSERT IGNORE INTO ip_ban (ip_address, reason) VALUES (?, ?)");

@@ -87,10 +87,11 @@ function trust_proxy_headers(): bool
 function meel_is_loopback_ip(string $ip): bool
 {
     $ip = meel_normalize_ip($ip);
-    if ($ip === '' || $ip === 'localhost') {
+    if ($ip === '') {
         return false;
     }
-    if ($ip === '::1') {
+    // alamat server/localhost tidak boleh masuk daftar ban
+    if (in_array($ip, ['localhost', 'lo', '0.0.0.0', '::1'], true)) {
         return true;
     }
     return strpos($ip, '127.') === 0;
