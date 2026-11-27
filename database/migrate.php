@@ -694,6 +694,15 @@ $migrations = [
             },
         ],
     ],
+    9 => [
+        'description' => 'Music: artist NULL/kosong jadi By Uploader',
+        'sql' => [
+            function ($conn) {
+                $conn->query("UPDATE music SET artist = 'By Uploader'
+                    WHERE artist IS NULL OR TRIM(artist) = ''");
+            },
+        ],
+    ],
 ];
 $conn->query("CREATE TABLE IF NOT EXISTS db_version (
     id INT AUTO_INCREMENT PRIMARY KEY,

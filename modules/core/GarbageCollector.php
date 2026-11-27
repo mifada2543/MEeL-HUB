@@ -7,6 +7,7 @@ class GarbageCollector
     private const GUEST_CLEANUP_INTERVAL = 3600;
     private const ROOM_IDLE_MINUTES = 10;
     private const CHESS_CLEANUP_INTERVAL = 60;
+    public const QUEUE_STALE_MINUTES = 10;
     public const QUEUE_STUCK_MINUTES = 360;
     public const STALE_QUEUE_SWEEP_INTERVAL = 60;
     private const CACHE_TTL_MAP = [
@@ -47,6 +48,22 @@ class GarbageCollector
         }
         return $out;
     }
+    /** @return array{scanned:int, failed:int, refunded:int, completed:int} */
+    public static function cleanStaleQueues(\mysqli $conn): array
+    {
+        $result = self::releaseStaleQueueRowsThrottled(
+            $conn,
+            self::QUEUE_STALE_MINUTES,
+            ['upload_queue', 'transcode_queue']
+        );
+        if ($result === null) {
+            return ['scanned' => 0, 'failed' => 0, 'refunded' => 0, 'completed' => 0];
+        }
+        require_once __DIR__ . '/TranscoderBase.php';
+        TranscoderBase::cleanupStalePidFiles(self::QUEUE_STALE_MINUTES * 60);
+        return $result;
+    }
+
     /**
      * @param string[] $tables
      * @return array{scanned:int, failed:int, refunded:int, completed:int}|null null bila di-skip karena throttle

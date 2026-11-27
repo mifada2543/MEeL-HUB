@@ -144,6 +144,79 @@ function meel_invalidate_media_stats_cache(?string $table = null): void
 }
 }
 
+if (!function_exists('meel_recommendation_ids')) {
+/**
+ * Kumpulan ID rekomendasi yang stabil per sesi. Diacak sekali, lalu diambil
+ * per halaman memakai offset — mencegah duplikat saat scroll.
+ *
+ * @return int[]
+ */
+function meel_recommendation_ids(
+    mysqli $conn,
+    string $table,
+    int $currentId,
+    int $limit,
+    int $offset = 0
+): array {
+    $limit = max(0, $limit);
+    if ($limit === 0 || !in_array($table, meel_media_table_whitelist(), true)) {
+        return [];
+    }
+
+    $poolKey = 'rec_pool_' . $table;
+    $ownerKey = 'rec_pool_owner_' . $table;
+    $pool = $_SESSION[$poolKey] ?? [];
+    if (!is_array($pool)) {
+        $pool = [];
+    }
+    $pool = array_values(array_unique(array_map('intval', $pool)));
+
+    if ($pool === [] || (int)($_SESSION[$ownerKey] ?? 0) !== $currentId) {
+        $stmt = $conn->prepare("SELECT id FROM `{$table}` WHERE id != ? ORDER BY id LIMIT 5000");
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->bind_param('i', $currentId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $pool = [];
+        while ($res && ($row = $res->fetch_assoc())) {
+            $pool[] = (int) $row['id'];
+        }
+        $stmt->close();
+        shuffle($pool);
+        $_SESSION[$poolKey] = $pool;
+        $_SESSION[$ownerKey] = $currentId;
+        $offset = 0;
+    }
+
+    $slice = array_slice($pool, max(0, $offset), $limit);
+    if (count($slice) < $limit) {
+        $used = array_values(array_unique(array_merge([$currentId], $pool)));
+        $stmt = $conn->prepare("SELECT id FROM `{$table}` WHERE id != ? ORDER BY id DESC LIMIT 5000");
+        if ($stmt) {
+            $stmt->bind_param('i', $currentId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $extra = [];
+            while ($res && ($row = $res->fetch_assoc())) {
+                $extra[] = (int) $row['id'];
+            }
+            $stmt->close();
+            $extra = array_values(array_diff($extra, $used));
+            shuffle($extra);
+            $fill = array_slice($extra, 0, $limit - count($slice));
+            $slice = array_merge($slice, $fill);
+            $pool = array_merge($pool, $fill);
+        }
+    }
+
+    $_SESSION[$poolKey] = $pool;
+
+    return array_values(array_unique(array_map('intval', $slice)));
+}
+}
+
 if (!function_exists('meel_pick_random_ids')) {
 function meel_pick_random_ids(
     mysqli $conn,

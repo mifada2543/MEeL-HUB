@@ -325,7 +325,7 @@ class MediaViewerTest extends TestCase
         $this->assertGreaterThan(0, $questionMarks);
     }
 
-    public function testRecommendationsResetSeenWhenExhausted(): void
+    public function testRecommendationsUseStableSessionPool(): void
     {
         $_SESSION['seen_music_ids'] = [2, 3];
         $conn = $this->buildRecommendConn([2, 3], 3, 2, 3, [
@@ -334,7 +334,10 @@ class MediaViewerTest extends TestCase
         $viewer = new MediaViewer($conn, null, 'music', 1);
         $viewer->getRecommendations(10);
 
-        $this->assertSame([], $_SESSION['seen_music_ids'], 'penanda seen harus di-reset');
+        $pool = $_SESSION['rec_pool_music'];
+        sort($pool);
+        $this->assertSame([2, 3], $pool, 'pool sesi harus dipakai, bukan penanda seen lama');
+        $this->assertSame([2, 3], $_SESSION['seen_music_ids'], 'penanda seen tidak lagi dipakai untuk rekomendasi');
     }
 
     /** Viewer dengan sesi login; hasil query dipetakan per-pola SQL, bukan urutan stmtQueue. */

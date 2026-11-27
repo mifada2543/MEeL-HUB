@@ -13,7 +13,7 @@ if ($thumb === '') {
     $thumb = $is_music ? '../assets/img/placeholder-music.svg' : '../assets/img/placeholder-video.svg';
 }
 $watch = base_url(($is_music ? '/music' : '/video') . '/watch?v=' . (int)$item['id']);
-$artist = trim((string)($item['artist'] ?? ''));
+$artist = $is_music ? meel_music_artist($item['artist'] ?? null) : '';
 ?>
 <div class="content-card">
     <a href="<?= $watch ?>" class="block card-thumb relative" title="<?= htmlspecialchars($item['title']) ?>">

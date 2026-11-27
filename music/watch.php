@@ -36,7 +36,7 @@ session_write_close();
         $__og_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__og_image;
     }
     $_META_TITLE = $v['title'] . ' — MEeL Music';
-    $_META_DESC = 'Dengarkan ' . $v['title'] . ' oleh ' . ($v['artist'] ?? 'Tidak diketahui') . ' di MEeL Music.';
+    $_META_DESC = 'Dengarkan ' . $v['title'] . ' oleh ' . meel_music_artist($v['artist'] ?? null) . ' di MEeL Music.';
     $_META_IMAGE = $__og_image;
     $_META_IMAGE_W = '512';
     $_META_IMAGE_H = '512';
@@ -125,9 +125,9 @@ session_write_close();
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="text-center sm:text-left flex-1 min-w-0">
                                 <div class="track-title truncate" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
-                                <a href="beranda?artist=<?= urlencode($v['artist']) ?>"
+                                <a href="beranda?artist=<?= urlencode(meel_music_artist($v['artist'] ?? null)) ?>"
                                     class="text-orange-400 font-bold text-sm uppercase tracking-widest hover:underline block mt-2 truncate">
-                                    <?= htmlspecialchars($v['artist']) ?>
+                                    <?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?>
                                 </a>
                             </div>
                         </div>
@@ -367,7 +367,7 @@ session_write_close();
                                     <div class="text-[11px] font-bold truncate uppercase <?= $is_pl ? 'text-orange-400' : 'text-gray-400' ?>">
                                         <?= htmlspecialchars($q['title']) ?>
                                     </div>
-                                    <div class="text-[9px] text-gray-400 uppercase tracking-wider"><?= htmlspecialchars($q['artist']) ?></div>
+                                    <div class="text-[9px] text-gray-400 uppercase tracking-wider"><?= htmlspecialchars(meel_music_artist($q['artist'] ?? null)) ?></div>
                                 </div>
                                 <?php if ($is_pl): ?><i data-lucide="volume-2" class="w-3.5 h-3.5 text-orange-400 flex-shrink-0"></i><?php endif; ?>
                             </a>
@@ -381,14 +381,14 @@ session_write_close();
                     <span id="rec-title-text" class="text-[9px] font-bold uppercase tracking-[.25em] text-gray-300 truncate" title="Discover">Discover</span>
                 </div>
                 <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
+                    <?php $rekom_count = $rekom->num_rows; ?>
                     <?php while ($rec = $rekom->fetch_assoc()):
                         meel_render_music_rec_card($rec);
                     endwhile; ?>
-                    <?php if ($rekom->num_rows >= 15): ?>
+                    <?php if ($rekom_count >= 15): ?>
                         <div class="py-3 text-center rec-sentinel"
-                            hx-get="search?exclude=<?= (int)$id ?>"
-                            hx-target="#music-recommendation-column"
-                            hx-swap="beforeend"
+                            hx-get="search?exclude=<?= (int)$id ?>&offset=15"
+                            hx-swap="outerHTML"
                             hx-trigger="revealed"
                             hx-indicator="#music-search-indicator">
                             <div class="rec-spinner animate-spin h-3 w-3 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"></div>
@@ -473,7 +473,7 @@ session_write_close();
                     </div>
                     <div class="mp-meta">
                         <div class="mp-title" id="mini-title"><?= htmlspecialchars($v['title']) ?></div>
-                        <div class="mp-artist" id="mini-artist"><?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?></div>
+                        <div class="mp-artist" id="mini-artist"><?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?></div>
                     </div>
                 </div>
                 <div class="mp-controls">
@@ -515,7 +515,7 @@ session_write_close();
             </div>
             <div class="meel-share-uploader">
                 <div class="meel-share-avatar" id="meel-share-avatar" aria-hidden="true"><img id="meel-share-avatar-img" src="<?= htmlspecialchars((!empty($v['uploader_pfp']) ? meel_profile_image_url($v['uploader_pfp'], '../profile/upload/') : '../profile/upload/default_avatar.png'), ENT_QUOTES, 'UTF-8') ?>" alt="" onerror="this.onerror=null;this.src='../profile/upload/default_avatar.png'"></div>
-                <div class="meel-share-uploader-name"><?= htmlspecialchars($v['artist'] ?? '', ENT_QUOTES, 'UTF-8') ?></div>
+                <div class="meel-share-uploader-name"><?= htmlspecialchars(meel_music_artist($v['artist'] ?? null), ENT_QUOTES, 'UTF-8') ?></div>
             </div>
             <div class="meel-share-row">
                 <input type="text" id="meel-share-url" readonly value="" aria-label="Tautan lagu">
@@ -543,7 +543,7 @@ session_write_close();
             fileSizeBytes: <?= (int)$file_size_bytes ?>,
             nextSongUrl: <?= json_encode($next_song_url) ?>,
             title: <?= json_encode($v['title']) ?>,
-            artist: <?= json_encode($v['artist'] ?? '') ?>,
+            artist: <?= json_encode(meel_music_artist($v['artist'] ?? null)) ?>,
             uploader: <?= json_encode($v['uploader'] ?? '') ?>,
             uploaderPfp: <?= json_encode((!empty($v['uploader_pfp']) ? meel_profile_image_url($v['uploader_pfp'], '../profile/upload/') : '')) ?>,
             startAt: <?= $startAt ?>,
@@ -629,6 +629,17 @@ session_write_close();
                 titleEl.textContent = 'Discover';
                 titleEl.title = 'Discover';
             }
+        });
+    </script>
+    <script>
+        document.addEventListener('htmx:afterRequest', function () {
+            var col = document.getElementById('music-recommendation-column');
+            if (!col) return;
+            var seen = new Set();
+            col.querySelectorAll('[data-id]').forEach(function (el) {
+                var key = el.getAttribute('data-id');
+                if (seen.has(key)) el.remove(); else seen.add(key);
+            });
         });
     </script>
 </body>

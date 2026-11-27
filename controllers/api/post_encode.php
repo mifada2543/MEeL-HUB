@@ -58,7 +58,7 @@ if ($input_path === null) {
 $result = $transcoder->encodeMusic(
     $temp_file,
     (string) ($pending['title'] ?? 'Unknown'),
-    (string) ($pending['artist'] ?? 'Unknown Artist'),
+    meel_music_artist($pending['artist'] ?? null),
     (string) ($pending['album'] ?? 'Single'),
     (int) ($pending['duration'] ?? 0),
     (string) ($pending['description'] ?? 'Upload by MEeL Engine')

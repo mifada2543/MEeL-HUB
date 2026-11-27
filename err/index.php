@@ -122,6 +122,8 @@ $types = [
         'meta_d' => 'Layanan database sedang tidak tersedia. Silakan coba lagi nanti.',
     ],
 ];
+// `ban` adalah kode kanonik; `banned` tetap diterima untuk URL lama.
+$types['ban'] = $types['banned'];
 $code = (isset($code) && is_string($code) && $code !== '')
     ? $code
     : ((isset($_GET['code']) && is_string($_GET['code'])) ? $_GET['code'] : 'not_found');
@@ -153,7 +155,9 @@ if (($ref = meel_same_origin_referer()) !== null) {
 }
 $accent = $module['accent'] ?? $type['accent'];
 $accent2 = $module['accent2'] ?? $type['accent2'];
-$reason = (isset($_GET['reason']) && is_string($_GET['reason'])) ? htmlspecialchars(trim($_GET['reason'])) : '';
+$reason = (isset($_GET['reason']) && is_string($_GET['reason']))
+    ? mb_substr(htmlspecialchars(trim($_GET['reason'])), 0, 200)
+    : '';
 ?>
 <!DOCTYPE html>
 <html lang="id">

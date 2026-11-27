@@ -72,13 +72,12 @@ class MediaLibrary
         if (empty($q)) {
             if ($sidebar) {
                 $sidebar_limit = 15;
-                $picked_ids = meel_pick_random_ids(
+                $picked_ids = meel_recommendation_ids(
                     $this->conn,
                     $table,
-                    $sidebar_limit,
                     $exclude,
-                    $_SESSION[$sessionKey] ?? [],
-                    $sessionKey
+                    $sidebar_limit,
+                    $offset
                 );
                 if (empty($picked_ids)) {
                     $stmt = $this->conn->prepare(

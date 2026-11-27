@@ -92,6 +92,10 @@ require_once __DIR__ . '/../modules/auth/helpers/session.php';
 meel_boot_session();
 require_once __DIR__ . '/../modules/autoload.php';
 require_once __DIR__ . '/../modules/core/helpers.php';
+if (PHP_SAPI !== 'cli' && isset($conn) && $conn instanceof \mysqli) {
+    require_once __DIR__ . '/../modules/core/activity_logger.php';
+    ActivityLogger::guardBan($conn);
+}
 if (!headers_sent()) {
     header("X-Frame-Options: SAMEORIGIN");
     header("X-Content-Type-Options: nosniff");
@@ -127,6 +131,7 @@ if (!defined('MEEL_API_CONTEXT')) {
         ActivityLogger::onRequest($conn);
         require_once __DIR__ . '/../modules/core/GarbageCollector.php';
         GarbageCollector::cleanChessRooms($conn);
+        GarbageCollector::cleanStaleQueues($conn);
     }
 }
 

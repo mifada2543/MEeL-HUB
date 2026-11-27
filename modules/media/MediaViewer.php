@@ -150,11 +150,11 @@ class MediaViewer
         return $this->media_type;
     }
 
-    public function getRecommendations($limit = 10)
+    public function getRecommendations($limit = 10, $offset = 0)
     {
         $limit = (int)$limit;
+        $offset = (int)$offset;
         $table = $this->table;
-        $seenKey = "seen_{$table}_ids";
 
         if (meel_media_stats($this->conn, $table)['total'] <= 1) {
             return $this->conn->query(
@@ -163,13 +163,12 @@ class MediaViewer
             );
         }
 
-        $picked_ids = meel_pick_random_ids(
+        $picked_ids = meel_recommendation_ids(
             $this->conn,
             $table,
-            $limit,
             $this->media_id,
-            $_SESSION[$seenKey] ?? [],
-            $seenKey
+            $limit,
+            $offset
         );
 
         if (empty($picked_ids)) {

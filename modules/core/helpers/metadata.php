@@ -1,4 +1,14 @@
 <?php
+if (!defined('MEEL_DEFAULT_ARTIST')) {
+    define('MEEL_DEFAULT_ARTIST', 'By Uploader');
+}
+if (!function_exists('meel_music_artist')) {
+    function meel_music_artist(?string $artist): string
+    {
+        $artist = trim((string)$artist);
+        return $artist !== '' ? $artist : MEEL_DEFAULT_ARTIST;
+    }
+}
 if (!function_exists('generate_search_metadata')) {
 function generate_search_metadata(string $title, string $artist = '', string $album = ''): string
 {

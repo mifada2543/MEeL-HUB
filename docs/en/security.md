@@ -405,7 +405,7 @@ define('MEEL_TRUST_PROXY_HEADERS', true);
 
 ### Ban Check (Real-time)
 
-Checked on every page load. Non-admin users are redirected to `err/?code=banned` with the ban reason.
+Checked before routing. Non-admin users are logged out, then redirected to `err/?code=ban` with the ban reason (`code=banned` remains supported as a legacy alias).
 
 ---
 

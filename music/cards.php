@@ -11,7 +11,7 @@ if (!function_exists('meel_render_music_row')) {
         <div class="music-item flex items-center gap-3 px-3 py-2.5 rounded-xl htmx-added"
             data-id="<?= $v['id'] ?>"
             data-title="<?= htmlspecialchars($v['title']) ?>"
-            data-artist="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>"
+            data-artist="<?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?>"
             data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
             data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
             data-filename="<?= htmlspecialchars($v['filename']) ?>">
@@ -20,11 +20,11 @@ if (!function_exists('meel_render_music_row')) {
                 style="background:var(--meel-surface-hover)"
                 data-music-id="<?= $v['id'] ?>"
                 data-title="<?= htmlspecialchars($v['title']) ?>"
-                data-artist="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>"
+                data-artist="<?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?>"
                 data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
                 data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
                 data-filename="<?= htmlspecialchars($v['filename']) ?>"
-                title="<?= htmlspecialchars($v['title']) ?> — <?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>">
+                title="<?= htmlspecialchars($v['title']) ?> — <?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?>">
                 <?php if (!empty($v['thumbnail'])): ?>
                     <img src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
                         alt="<?= htmlspecialchars($v['title']) ?> thumbnail"
@@ -44,15 +44,15 @@ if (!function_exists('meel_render_music_row')) {
                     onmouseout="this.style.color='var(--meel-text)'"
                     data-music-id="<?= $v['id'] ?>"
                     data-title="<?= htmlspecialchars($v['title']) ?>"
-                    data-artist="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>"
+                    data-artist="<?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?>"
                     data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
                     data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
                     data-filename="<?= htmlspecialchars($v['filename']) ?>" title="<?= htmlspecialchars($v['title']) ?>">
                     <?= htmlspecialchars($v['title']) ?>
                 </a>
                 <div class="flex items-center gap-2 mt-0.5">
-                    <span class="text-[10px] truncate" style="color:var(--meel-text-secondary)" title="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>">
-                        <?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>
+                    <span class="text-[10px] truncate" style="color:var(--meel-text-secondary)" title="<?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?>">
+                        <?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?>
                     </span>
                     <span class="text-[9px] px-1.5 py-0.5 rounded uppercase flex-shrink-0"
                         style="background:var(--meel-surface-hover); color:var(--meel-text-secondary); border:1px solid var(--meel-border)"
@@ -70,7 +70,7 @@ if (!function_exists('meel_render_music_row')) {
                 onmouseout="this.style.background='var(--meel-orange)'"
                 data-music-id="<?= $v['id'] ?>"
                 data-title="<?= htmlspecialchars($v['title']) ?>"
-                data-artist="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>"
+                data-artist="<?= htmlspecialchars(meel_music_artist($v['artist'] ?? null)) ?>"
                 data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
                 data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
                 data-filename="<?= htmlspecialchars($v['filename']) ?>"
@@ -92,6 +92,7 @@ if (!function_exists('meel_render_music_rec_card')) {
         $lbl = $ext === 'ogg' ? 'opus' : $ext;
     ?>
         <a href="<?= base_url('/music/watch?v=' . (int)$rec['id']) ?>"
+            data-id="<?= (int)$rec['id'] ?>"
             class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline<?= $htmx ? ' htmx-added' : '' ?>"
             title="<?= htmlspecialchars($rec['title']) ?>">
             <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
@@ -105,7 +106,7 @@ if (!function_exists('meel_render_music_rec_card')) {
                 <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
                     <?= htmlspecialchars($rec['title']) ?>
                 </div>
-                <div class="rec-meta-text mt-1 text-[9px] uppercase tracking-wider truncate"><?= htmlspecialchars($rec['artist']) ?></div>
+                <div class="rec-meta-text mt-1 text-[9px] uppercase tracking-wider truncate"><?= htmlspecialchars(meel_music_artist($rec['artist'] ?? null)) ?></div>
                 <div class="flex items-center gap-1.5 mt-1">
                     <span class="text-[9px] text-gray-300"><?= number_format($rec['views'] ?? 0) ?> tayangan</span>
                     <span class="rec-meta-text text-[8px] px-1.5 py-0.5 rounded bg-white/[.04] border border-white/[.05] uppercase"><?= $lbl ?></span>

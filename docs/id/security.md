@@ -598,24 +598,19 @@ function validate_and_format_ip($ip) {
 ### Ban Check (Real-time)
 
 ```php
-// Di activity_logger.php - dijalankan di setiap halaman (Header Redirect)
-$current_page = basename($_SERVER['PHP_SELF']);
-$current_dir  = basename(dirname($_SERVER['PHP_SELF']));
-if ($current_dir !== 'err') {
-    if ($ban_res->num_rows > 0) {
-        // Jika bukan admin, baru di-redirect
-        if ($session_role !== 'admin') {
-            $row = $ban_res->fetch_assoc();
-            $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
-            $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
-            $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
-            $banned_url = $relative_base . '/err/?code=banned';
-            header("Location: " . $banned_url . "&reason=" . urlencode($row['reason']));
-            exit();
-        }
+// Di activity_logger.php — guard dijalankan sebelum routing, bukan di onRequest
+if (!self::isErrRequest()) {
+    $row = ...; // SELECT reason FROM ip_ban WHERE ip_address = ?
+    if ($row) {
+        self::logoutForBan(); // sesi user dihancurkan, guest mendapat ID baru
+        header('Location: ' . self::bannedUrl($row['reason']), true, 302);
+        exit();
     }
 }
+// bannedUrl() = base_url('/err/?code=ban&reason=' . rawurlencode($reason))
 ```
+
+Kode `ban` adalah kode kanonik. Kode `banned` tetap diterima sebagai alias agar tautan lama tidak rusak.
 
 ### Admin Ban Interface
 
