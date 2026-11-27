@@ -12,15 +12,35 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi mengikut
 
 ## [Unreleased]
 
-### Fixed
-
-- **Thumbnail video yang gagal dibuat tidak lagi menunjuk file yang tidak ada:** video yang thumbnail-nya tidak berhasil diproses menyimpan nama thumbnail kosong, bukan referensi ke `default_thumb.webp` yang belum pernah ada di storage. Fallback kini benar-benar di-seed dan nama yang disimpan selalu bisa resolve.
-- **Installer dari ZIP tidak lagi gagal di verifikasi akhir:** health check deployment dipindah ke `tools/check_deploy.php` dan ikut paket core/full. `tests/` tetap tidak masuk paket utama, tetapi tersedia sebagai asset rilis opsional `MEeL-HUB-tests-*.zip`.
-
 ### Added
 
 - **Installer menyeed thumbnail default video:** gambar fallback bawaan (`assets/img/video0.webp`) disalin ke `video/upload/thumbnail/default_thumb.webp` saat instalasi, sehingga gambar fallback langsung tersedia setelah instalasi selesai.
 - **Pemilihan paket rilis:** tag anotasi dapat memuat baris `packages: ...` sehingga workflow hanya membangun/mengunggah paket yang dipilih. `scripts/ci/build-tests-package.sh` membangun asset tests opsional.
+- **Bio bawaan untuk akun baru:** akun yang baru terdaftar kini langsung memiliki bio pengganti, sehingga profil tidak tampil kosong.
+- **Tautan unggah yang mengikuti halaman:** menu unggah kini menampilkan "Unggah Video" atau "Unggah Musik" sesuai modul yang sedang dibuka, dan tautannya tetap benar dari halaman mana pun.
+
+### Changed
+
+- **Pengguna biasa kini bisa mengunggah:** selain admin dan member, peran `user` mendapat akses unggah video/musik; halaman unggah tetap menolak peran tanpa izin.
+- **Artis musik kosong kini dibaca "By Uploader":** lagu tanpa nama artis tidak lagi menampilkan teks kosong atau "Tidak diketahui" di kartu, daftar, dan halaman musik; data lama juga ikut diperbarui.
+- **Penolakan akses admin memakai halaman `denied`:** halaman admin yang tidak diizinkan kini menunjukkan halaman "Access Denied", bukan "Not Found".
+- **Halaman ban memakai kode `ban`:** alamat ban kini `?code=ban&reason=...`; tautan lama dengan `code=banned` tetap berfungsi.
+
+### Fixed
+
+- **Thumbnail video yang gagal dibuat tidak lagi menunjuk file yang tidak ada:** video yang thumbnail-nya tidak berhasil diproses menyimpan nama thumbnail kosong, bukan referensi ke `default_thumb.webp` yang belum pernah ada di storage. Fallback kini benar-benar di-seed dan nama yang disimpan selalu bisa resolve.
+- **Installer dari ZIP tidak lagi gagal di verifikasi akhir:** health check deployment dipindah ke `tools/check_deploy.php` dan ikut paket core/full. `tests/` tetap tidak masuk paket utama, tetapi tersedia sebagai asset rilis opsional `MEeL-HUB-tests-*.zip`.
+- **Rekomendasi tidak lagi berulang saat digulir:** daftar rekomendasi video/musik kini konsisten 15 item unik per halaman dan berhenti saat konten habis.
+- **Kartu rekomendasi tidak tercampur dengan kartu halaman utama:** gulir lanjutan kini selalu menampilkan kartu rekomendasi, bukan kartu atau baris dari halaman indeks video/musik.
+- **Tamu tidak aktif lebih cepat dibersihkan:** akun tamu yang diam lebih dari 5 menit kini dianggap offline dan ikut dibersihkan otomatis.
+- **Ruang catur yang ditinggalkan ikut dibersihkan:** ruang tanpa lawan atau tanpa langkah selama 10 menit kini dihapus otomatis.
+- **Antrean transcode yang terhenti tidak lagi hilang:** job yang ditinggalkan proses mati kini tersimpan sebagai gagal dan tidak lagi dihapus saat masih berjalan.
+
+### Security
+
+- **IP server tidak bisa diblokir:** alamat `127.*`, `::1`, `::ffff:127.*`, `localhost`, `lo`, dan `0.0.0.0` kini ditolak sebagai target ban, sehingga server tidak bisa mengunci dirinya sendiri.
+- **User yang kena ban langsung dicabut sesinya:** pengguna tidak lagi tetap login setelah IP-nya diblokir; ia menjadi tamu sebelum halaman ban ditampilkan.
+- **Halaman ban tidak lagi jatuh ke "Not Found":** alasan ban dari database kini tampil pada halaman yang benar.
 
 ## [2.2.2] - 2026-10-31
 
