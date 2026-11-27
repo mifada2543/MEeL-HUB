@@ -17,7 +17,7 @@ if ($result['count'] > 0) {
         $nextOffset = $result['offset'] + $result['limit'];
 ?>
         <div class="py-3 text-center rec-sentinel"
-            hx-get="search?search=<?= urlencode($result['query']) ?>&exclude=<?= $result['exclude'] ?>&offset=<?= $nextOffset ?>"
+            hx-get="search?search=<?= urlencode($result['query']) ?>&exclude=<?= $result['exclude'] ?>&offset=<?= $nextOffset ?>&sidebar=1"
             hx-swap="outerHTML"
             hx-trigger="revealed"
             hx-indicator="#search-indicator">
