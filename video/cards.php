@@ -97,6 +97,7 @@ if (!function_exists('meel_render_video_rec_card')) {
         }
         ?>
         <a href="<?= base_url('/video/watch?v=' . (int)$rec['id']) ?>"
+           data-id="<?= (int)$rec['id'] ?>"
            class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline<?= $htmx ? ' htmx-added' : '' ?>"
            title="<?= htmlspecialchars($rec['title']) ?>">
             <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">

@@ -18,8 +18,7 @@ if ($result['count'] > 0) {
 ?>
         <div class="py-3 text-center rec-sentinel"
             hx-get="search?search=<?= urlencode($result['query']) ?>&exclude=<?= $result['exclude'] ?>&offset=<?= $nextOffset ?>"
-            hx-target="#recommendation-column"
-            hx-swap="beforeend"
+            hx-swap="outerHTML"
             hx-trigger="revealed"
             hx-indicator="#search-indicator">
             <div class="rec-spinner animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full mx-auto"></div>

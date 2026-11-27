@@ -327,14 +327,14 @@ session_write_close();
                 <span id="rec-title-text" class="truncate" title="Video Lainnya">Video Lainnya</span>
             </div>
             <div id="recommendation-column" class="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-0 lg:space-y-1">
+                <?php $rekom_count = $rekom->num_rows; ?>
                 <?php while ($r = $rekom->fetch_assoc()):
                     meel_render_video_rec_card($r);
                 endwhile; ?>
-                <?php if ($rekom->num_rows >= 15): ?>
+                <?php if ($rekom_count >= 15): ?>
                     <div class="py-3 text-center rec-sentinel"
-                        hx-get="search?exclude=<?= (int)$id ?>"
-                        hx-target="#recommendation-column"
-                        hx-swap="beforeend"
+                        hx-get="search?exclude=<?= (int)$id ?>&offset=15"
+                        hx-swap="outerHTML"
                         hx-trigger="revealed"
                         hx-indicator="#search-indicator">
                         <div class="rec-spinner animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full mx-auto"></div>
@@ -442,6 +442,17 @@ session_write_close();
                 titleEl.textContent = 'Video Lainnya';
                 titleEl.title = 'Video Lainnya';
             }
+        });
+    </script>
+    <script>
+        document.addEventListener('htmx:afterRequest', function () {
+            var col = document.getElementById('recommendation-column');
+            if (!col) return;
+            var seen = new Set();
+            col.querySelectorAll('[data-id]').forEach(function (el) {
+                var key = el.getAttribute('data-id');
+                if (seen.has(key)) el.remove(); else seen.add(key);
+            });
         });
     </script>
 </body>

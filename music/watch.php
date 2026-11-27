@@ -381,14 +381,14 @@ session_write_close();
                     <span id="rec-title-text" class="text-[9px] font-bold uppercase tracking-[.25em] text-gray-300 truncate" title="Discover">Discover</span>
                 </div>
                 <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
+                    <?php $rekom_count = $rekom->num_rows; ?>
                     <?php while ($rec = $rekom->fetch_assoc()):
                         meel_render_music_rec_card($rec);
                     endwhile; ?>
-                    <?php if ($rekom->num_rows >= 15): ?>
+                    <?php if ($rekom_count >= 15): ?>
                         <div class="py-3 text-center rec-sentinel"
-                            hx-get="search?exclude=<?= (int)$id ?>"
-                            hx-target="#music-recommendation-column"
-                            hx-swap="beforeend"
+                            hx-get="search?exclude=<?= (int)$id ?>&offset=15"
+                            hx-swap="outerHTML"
                             hx-trigger="revealed"
                             hx-indicator="#music-search-indicator">
                             <div class="rec-spinner animate-spin h-3 w-3 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"></div>
@@ -629,6 +629,17 @@ session_write_close();
                 titleEl.textContent = 'Discover';
                 titleEl.title = 'Discover';
             }
+        });
+    </script>
+    <script>
+        document.addEventListener('htmx:afterRequest', function () {
+            var col = document.getElementById('music-recommendation-column');
+            if (!col) return;
+            var seen = new Set();
+            col.querySelectorAll('[data-id]').forEach(function (el) {
+                var key = el.getAttribute('data-id');
+                if (seen.has(key)) el.remove(); else seen.add(key);
+            });
         });
     </script>
 </body>
