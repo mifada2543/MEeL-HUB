@@ -10,7 +10,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi mengikut
 > masalah, aturan yang berlaku, dan detail implementasi ada di
 > [docs/](docs/) — bukan di berkas ini.
 
-## [Unreleased]
+## [2.5.0] - 2026-11-27
 
 ### Added
 
