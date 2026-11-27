@@ -19,7 +19,8 @@ if (isset($_POST['ban_ip'])) {
         header("Location: user-management.php?msg=IP_Target_Invalid");
         exit();
     }
-    $reason = !empty($_POST['ban_reason']) ? $_POST['ban_reason'] : "Manual Ban by Admin";
+    $reason = trim((string)($_POST['ban_reason'] ?? ''));
+    $reason = $reason === '' ? 'Manual Ban by Admin' : mb_substr($reason, 0, 200);
 
     $stmt = $conn->prepare("INSERT IGNORE INTO ip_ban (ip_address, reason) VALUES (?, ?)");
     $stmt->bind_param("ss", $ip, $reason);

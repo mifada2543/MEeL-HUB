@@ -342,7 +342,7 @@ Saat metadata gagal di-parse, Transcoder menampilkan overlay debug:
 3. Jika menggunakan Cloudflare Tunnel, pastikan pengaturan cookie sesi dikonfigurasi untuk tetap persisten
 4. Coba akses menggunakan mode Incognito/Private Window di browser
 
-### ❌ Redirect ke `/err/?code=banned` (Akses Diblokir)
+### ❌ Redirect ke `/err/?code=ban` (Akses Diblokir)
 
 **Penyebab:** Alamat IP Anda terdaftar di tabel blokir firewall internal (`ip_ban`)
 

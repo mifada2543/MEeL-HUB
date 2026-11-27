@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/proxy.php';
 require_once __DIR__ . '/helpers/datetime.php';
+require_once __DIR__ . '/helpers/url.php';
 require_once __DIR__ . '/../auth/helpers/ban_guard.php';
 function validate_and_format_ip(string $ip): array
 {
@@ -137,10 +138,30 @@ class ActivityLogger
     }
     public static function guardBan(mysqli $conn): void
     {
-        if (basename(dirname((string)($_SERVER['PHP_SELF'] ?? ''))) === 'err') {
+        if (self::isErrRequest()) {
             return;
         }
         self::enforceIpBan($conn, self::clientIp());
+    }
+    private static function isErrRequest(): bool
+    {
+        $path = (string) parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+        if (defined('MEEL_BASE_URL')) {
+            $base = rtrim((string) MEEL_BASE_URL, '/');
+            if ($base !== '' && strpos($path, $base) === 0) {
+                $path = substr($path, strlen($base));
+            }
+        }
+        $path = '/' . trim($path, '/');
+        return $path === '/err' || strpos($path, '/err/') === 0;
+    }
+    private static function bannedUrl(string $reason): string
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            $reason = 'Pelanggaran kebijakan';
+        }
+        return base_url('/err/?code=ban&reason=' . rawurlencode($reason));
     }
     public static function logoutForBan(): void
     {
@@ -168,6 +189,7 @@ class ActivityLogger
         if (!$row) {
             return;
         }
+        $reason = (string) $row['reason'];
         self::logoutForBan();
         if (defined('MEEL_API_CONTEXT')) {
             http_response_code(403);
@@ -175,15 +197,13 @@ class ActivityLogger
             header('Cache-Control: no-store, max-age=0');
             echo json_encode([
                 'ok' => false,
-                'error' => 'banned',
+                'error' => 'ban',
+                'reason' => $reason !== '' ? $reason : 'Pelanggaran kebijakan',
                 'message' => 'Akses diblokir oleh sistem keamanan.',
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit();
         }
-        $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
-        $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
-        $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
-        header("Location: " . $relative_base . "/err/?code=banned&reason=" . urlencode($row['reason']));
+        header('Location: ' . self::bannedUrl($reason), true, 302);
         exit();
     }
     private static function enforceSingleSession(mysqli $conn, int $uid): array

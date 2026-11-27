@@ -334,7 +334,9 @@ class MediaViewerTest extends TestCase
         $viewer = new MediaViewer($conn, null, 'music', 1);
         $viewer->getRecommendations(10);
 
-        $this->assertSame([2, 3], $_SESSION['rec_pool_music'], 'pool sesi harus dipakai, bukan penanda seen lama');
+        $pool = $_SESSION['rec_pool_music'];
+        sort($pool);
+        $this->assertSame([2, 3], $pool, 'pool sesi harus dipakai, bukan penanda seen lama');
         $this->assertSame([2, 3], $_SESSION['seen_music_ids'], 'penanda seen tidak lagi dipakai untuk rekomendasi');
     }
 

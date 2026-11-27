@@ -453,7 +453,7 @@ When metadata fails to parse, Transcoder displays a debug overlay:
 3. If using Cloudflare Tunnel, ensure session cookie settings are configured to remain persistent.
 4. Try accessing using Incognito / Private Window mode in your browser.
 
-### ❌ Redirected to `/err/?code=banned` (Access Blocked)
+### ❌ Redirected to `/err/?code=ban` (Access Blocked)
 
 **Cause:** Your IP address is listed in the internal firewall block table (`ip_ban`).
 

@@ -119,7 +119,8 @@ class ActivityLoggerTest extends TestCase
         $_SESSION = [];
         $_SERVER['PHP_SELF'] = '/MEeL/video/index.php';
         $conn = $this->createMock(mysqli::class);
-        $conn->expects($this->exactly(2))
+        // guard ban dipanggil dari config sebelum onRequest; onRequest kini hanya telemetry
+        $conn->expects($this->exactly(1))
             ->method('prepare')
             ->willReturn(false);
         ActivityLogger::onRequest($conn);
